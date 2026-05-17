@@ -1,0 +1,32 @@
+name: EliteMonsters
+version: "${project.version}"
+main: com.elitemonsters.plugin.EliteMonstersPlugin
+api-version: "1.21.5"
+description: Elite Monsters and Horde System
+softdepend: [Vault, LuckPerms]
+
+commands:
+  elite:
+    description: Elite monsters main command
+    usage: /elite <spawn|reload|info|list|horde|toggle|clear>
+    aliases: [elitemob, em]
+
+permissions:
+  elitemonsters.command:
+    description: Main command access
+    default: op
+  elitemonsters.command.spawn:
+    description: Spawn elite mobs
+    default: op
+  elitemonsters.command.reload:
+    description: Reload config
+    default: op
+  elitemonsters.command.info:
+    description: View elite info
+    default: not op
+  elitemonsters.command.horde:
+    description: Control horde events
+    default: op
+  elitemonsters.command.clear:
+    description: Clear elite mobs
+    default: op
