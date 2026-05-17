@@ -134,7 +134,8 @@ public class EliteGenerationListener implements Listener {
         entity.customName(GradientUtil.parse(displayName));
         entity.setCustomNameVisible(true);
 
-        eliteMobs.put(entity.getUniqueId(), data);
+                plugin.getConfigManager().debugLog("Elite spawned: type=" + entity.getType() + " affix=" + affix.getKey() + " star=" + starLevel + " hp=" + String.format("%.1f", healthMult) + " dmg=" + String.format("%.1f", damageMult));
+eliteMobs.put(entity.getUniqueId(), data);
 
         if (plugin.getConfig().getBoolean("spawn-effects.lightning", true)) {
             entity.getWorld().strikeLightningEffect(entity.getLocation());

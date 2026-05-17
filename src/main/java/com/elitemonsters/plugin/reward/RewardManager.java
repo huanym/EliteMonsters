@@ -43,7 +43,8 @@ public class RewardManager {
             try {
                 Object value = section.get(key);
                 if (value instanceof Map<?, ?> map) {
-                    rewards.put(key, RewardData.parse(map));
+                                    plugin.getConfigManager().debugLog("Reward loaded: " + key);
+                rewards.put(key, RewardData.parse(map));
                     loaded++;
                 }
             } catch (Exception e) {
@@ -69,6 +70,7 @@ public class RewardManager {
         }
         if (reward.rollChance(random)) {
             reward.give(player, plugin);
+            plugin.getConfigManager().debugLog("Reward given: " + id + " -> " + player.getName());
         }
     }
 

@@ -40,6 +40,7 @@ public class HordeManager {
     }
 
     public boolean startHorde(Location location, String specifiedType) {
+        plugin.getConfigManager().debugLog("Horde start: world=" + location.getWorld().getName() + " type=" + (specifiedType != null ? specifiedType : "auto"));
         if (activeHorde != null) return false;
         int totalWaves = getTotalWaves();
         if (totalWaves == 0) return false;
@@ -123,6 +124,7 @@ public class HordeManager {
         private void startNextWave() {
             currentWave++;
             if (currentWave > totalWaves) { completeHorde(); return; }
+            plugin.getConfigManager().debugLog("Horde wave " + currentWave + "/" + totalWaves + " start");
 
             String waveKey = "horde.waves." + currentWave;
             int mobCount = plugin.getConfig().getInt(waveKey + ".mob-count", 10);
@@ -187,6 +189,7 @@ public class HordeManager {
                 timeoutTask = new BukkitRunnable() {
                     @Override
                     public void run() {
+                        plugin.getConfigManager().debugLog("Horde wave " + waveNum + " timeout");
                         broadcast(langComponent("horde-timeout", waveNum));
                         failHorde();
                     }
@@ -241,6 +244,7 @@ public class HordeManager {
 
         private void completeHorde() {
             running = false;
+            plugin.getConfigManager().debugLog("Horde completed: " + totalWaves + " waves, " + participants.size() + " participants");
             giveCompletionRewards();
             HordeManager.this.activeHorde = null;
         }
@@ -290,6 +294,7 @@ public class HordeManager {
         private void giveWaveRewards(String waveKey) {
             List<String> rewardIds = plugin.getConfig().getStringList(waveKey + ".rewards");
             if (!rewardIds.isEmpty()) {
+                plugin.getConfigManager().debugLog("Wave " + currentWave + " rewards: " + rewardIds);
                 for (UUID pid : participants) {
                     Player player = plugin.getServer().getPlayer(pid);
                     if (player == null || !player.isOnline()) continue;

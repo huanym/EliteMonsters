@@ -23,7 +23,7 @@ import java.nio.file.StandardCopyOption;
 
 public final class EliteMonstersPlugin extends JavaPlugin {
 
-    private static final int BUNDLED_CONFIG_VERSION = 3;
+    private static final int BUNDLED_CONFIG_VERSION = 4;
     private static final int BUNDLED_LANG_VERSION = 1;
     private static final int BUNDLED_REWARDS_VERSION = 1;
 

@@ -6,7 +6,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.*;
+import java.util.logging.Level;
 
 public class ConfigManager {
 
@@ -14,6 +16,7 @@ public class ConfigManager {
     private File configFile;
     private FileConfiguration config;
 
+    private boolean debug;
     private double baseEliteChance;
     private double globalAttributeScale;
     private Map<String, Double> heightMultipliers;
@@ -37,11 +40,22 @@ public class ConfigManager {
         if (!configFile.exists()) {
             plugin.saveResource("config.yml", false);
         }
-        plugin.reloadConfig();
         config = YamlConfiguration.loadConfiguration(configFile);
+
+        try {
+            Field field = org.bukkit.plugin.java.JavaPlugin.class.getDeclaredField("config");
+            field.setAccessible(true);
+            field.set(plugin, config);
+        } catch (Exception e) {
+            plugin.getLogger().warning("Failed to sync plugin config: " + e.getMessage());
+        }
+
+        debug = config.getBoolean("debug", false);
+        if (debug) plugin.getLogger().info("[Debug] Config loading from: " + configFile.getAbsolutePath());
 
         baseEliteChance = config.getDouble("generation.base-chance", 0.05);
         globalAttributeScale = config.getDouble("generation.global-attribute-scale", 0.5);
+        debugLog("base-chance=" + baseEliteChance + " global-attribute-scale=" + globalAttributeScale);
 
         heightMultipliers = new HashMap<>();
         if (config.getConfigurationSection("generation.conditions.height") != null) {
@@ -82,6 +96,7 @@ public class ConfigManager {
             starAttributeMultipliers.put(i, config.getDouble("star-system.levels." + i + ".attribute-multiplier", 1.0 + (i - 1) * 0.5));
             starSkillCount.put(i, config.getInt("star-system.levels." + i + ".skill-count", i));
         }
+        debugLog("Config loaded: " + starAttributeMultipliers.size() + " star levels, " + heightMultipliers.size() + " height conds");
     }
 
     public double getEliteChance(String mobType, String biome, double y, String time, String difficulty) {
@@ -111,10 +126,16 @@ public class ConfigManager {
         return Math.min(chance, 1.0);
     }
 
+    public boolean isDebug() { return debug; }
     public double getGlobalAttributeScale() { return globalAttributeScale; }
     public int getMaxStarLevel() { return maxStarLevel; }
     public double getStarAttributeMultiplier(int star) { return starAttributeMultipliers.getOrDefault(star, 1.0); }
     public int getStarSkillCount(int star) { return starSkillCount.getOrDefault(star, star); }
+    public FileConfiguration getConfig() { return config; }
+
+    public void debugLog(String msg) {
+        if (debug) plugin.getLogger().info("[Debug] " + msg);
+    }
 
     public void save() {
         try { config.save(configFile); } catch (IOException e) { plugin.getLogger().warning("无法保存配置: " + e.getMessage()); }
