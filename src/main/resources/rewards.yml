@@ -1,0 +1,143 @@
+# config-version: 1
+# ============================================================
+#   EliteMonsters - 奖励配置文件
+#   Purpur 26.x / Paper 1.21.5+
+# ============================================================
+#
+# 奖励类型说明:
+#   ITEM       - 物品奖励 (名称/Lore/附魔/CustomModelData/头颅纹理)
+#   EXP        - 经验值或等级 (支持范围随机)
+#   VAULT      - 游戏币 (依赖 Vault)
+#   COMMAND    - 控制台执行指令 (占位符: {player} {x} {y} {z})
+#   PERMISSION - LuckPerms 权限/称号 (支持限时或永久)
+#   GROUP      - 组合奖励 (包含多个子奖励, 可递归嵌套)
+#
+# 通用字段:
+#   chance: 0.0~1.0 (概率, 默认1.0=必定发放)
+# ============================================================
+
+rewards:
+  wave1_default:
+    type: GROUP
+    children:
+      - type: VAULT
+        amount: 100.0
+      - type: EXP
+        amount: 50
+        is-levels: false
+      - type: ITEM
+        material: BONE
+        amount: 5
+      - type: ITEM
+        material: ROTTEN_FLESH
+        amount: 5
+
+  wave2_default:
+    type: GROUP
+    children:
+      - type: VAULT
+        amount: 200.0
+      - type: EXP
+        amount: 80
+      - type: ITEM
+        material: IRON_INGOT
+        amount: 3
+      - type: ITEM
+        material: BONE
+        amount: 8
+
+  wave3_default:
+    type: GROUP
+    children:
+      - type: VAULT
+        amount: 350.0
+      - type: EXP
+        amount: 120
+      - type: ITEM
+        material: DIAMOND
+        amount: 1
+      - type: ITEM
+        material: IRON_INGOT
+        amount: 5
+
+  wave4_default:
+    type: GROUP
+    children:
+      - type: VAULT
+        amount: 500.0
+      - type: EXP
+        amount: 200
+      - type: ITEM
+        material: DIAMOND
+        amount: 3
+      - type: ITEM
+        material: EMERALD
+        amount: 5
+
+  wave5_default:
+    type: GROUP
+    children:
+      - type: VAULT
+        amount: 1000.0
+      - type: EXP
+        amount: 500
+      - type: ITEM
+        material: DIAMOND
+        amount: 5
+      - type: ITEM
+        material: EMERALD
+        amount: 10
+      - type: ITEM
+        material: NETHERITE_INGOT
+        amount: 1
+      - type: ITEM
+        material: ENCHANTED_GOLDEN_APPLE
+        amount: 1
+
+  example_custom_item:
+    type: ITEM
+    material: DIAMOND_SWORD
+    amount: 1
+    name: "&6尸潮克星"
+    lore:
+      - "&7击败尸潮获得的奖励"
+      - "&e+5 攻击伤害"
+    enchantments:
+      SHARPNESS: 5
+      UNBREAKING: 3
+    custom_model_data: 10001
+
+  example_skull:
+    type: ITEM
+    material: PLAYER_HEAD
+    amount: 1
+    skull_texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv..."
+    name: "&6Boss头颅"
+
+  example_exp_levels:
+    type: EXP
+    min-amount: 5
+    max-amount: 10
+    is-levels: true
+
+  example_command:
+    type: COMMAND
+    commands:
+      - "give {player} diamond 1"
+      - "broadcast &e{player} 获得了尸潮奖励!"
+
+  example_permission:
+    type: PERMISSION
+    permission: "elitemonsters.vip"
+    duration: "7d"
+
+  example_permission_permanent:
+    type: PERMISSION
+    permission: "elitemonsters.champion"
+
+  example_chance:
+    type: ITEM
+    material: NETHER_STAR
+    amount: 1
+    chance: 0.1
+    name: "&d稀有掉落"
