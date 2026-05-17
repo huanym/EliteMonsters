@@ -15,6 +15,7 @@ public class ConfigManager {
     private FileConfiguration config;
 
     private double baseEliteChance;
+    private double globalAttributeScale;
     private Map<String, Double> heightMultipliers;
     private Map<String, Double> biomeMultipliers;
     private Map<String, Double> timeMultipliers;
@@ -36,9 +37,11 @@ public class ConfigManager {
         if (!configFile.exists()) {
             plugin.saveResource("config.yml", false);
         }
+        plugin.reloadConfig();
         config = YamlConfiguration.loadConfiguration(configFile);
 
         baseEliteChance = config.getDouble("generation.base-chance", 0.05);
+        globalAttributeScale = config.getDouble("generation.global-attribute-scale", 0.5);
 
         heightMultipliers = new HashMap<>();
         if (config.getConfigurationSection("generation.conditions.height") != null) {
@@ -108,12 +111,13 @@ public class ConfigManager {
         return Math.min(chance, 1.0);
     }
 
+    public double getGlobalAttributeScale() { return globalAttributeScale; }
     public int getMaxStarLevel() { return maxStarLevel; }
     public double getStarAttributeMultiplier(int star) { return starAttributeMultipliers.getOrDefault(star, 1.0); }
     public int getStarSkillCount(int star) { return starSkillCount.getOrDefault(star, star); }
 
     public void save() {
-        try { config.save(configFile); } catch (IOException e) { plugin.getLogger().warning("鏃犳硶淇濆瓨閰嶇疆: " + e.getMessage()); }
+        try { config.save(configFile); } catch (IOException e) { plugin.getLogger().warning("无法保存配置: " + e.getMessage()); }
     }
 
     public void reload() { load(); }

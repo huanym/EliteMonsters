@@ -92,6 +92,10 @@ public class EliteGenerationListener implements Listener {
         double speedMult = affix.getSpeedMultiplier();
         double armor = affix.getArmor();
         double kbResist = affix.getKnockbackResistance();
+        double globalScale = plugin.getConfigManager().getGlobalAttributeScale();
+        healthMult = 1.0 + (healthMult - 1.0) * globalScale;
+        damageMult = 1.0 + (damageMult - 1.0) * globalScale;
+        speedMult = 1.0 + (speedMult - 1.0) * globalScale;
 
         AttributeInstance maxHp = entity.getAttribute(Attribute.MAX_HEALTH);
         double origHp = maxHp != null ? maxHp.getBaseValue() : 20.0;

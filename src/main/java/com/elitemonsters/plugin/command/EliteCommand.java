@@ -138,6 +138,7 @@ public class EliteCommand implements TabExecutor {
                 break;
             case "stop":
                 if (!sender.hasPermission("elitemonsters.command.horde")) { sender.sendMessage(lang("no-permission")); return true; }
+                if (!plugin.getHordeManager().isHordeActive()) { sender.sendMessage(lang("horde-inactive")); return true; }
                 plugin.getHordeManager().stopHorde();
                 break;
             case "info":
