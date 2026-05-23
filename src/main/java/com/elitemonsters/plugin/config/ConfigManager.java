@@ -25,7 +25,16 @@ public class ConfigManager {
     private Map<String, Double> difficultyMultipliers;
     private List<String> blacklistMobs;
     private List<String> whitelistMobs;
+    private List<String> worldBlacklist;
+    private boolean dynamicDifficulty;
     private boolean useWhitelist;
+
+    private boolean spawnLightning;
+    private boolean spawnGlobalAlert;
+    private double spawnAlertRange;
+    private String starChar;
+    private String emptyStarChar;
+    private java.util.Map<Integer, String> starArmorTiers;
 
     private int maxStarLevel;
     private Map<Integer, Double> starAttributeMultipliers;
@@ -87,14 +96,23 @@ public class ConfigManager {
 
         blacklistMobs = config.getStringList("generation.blacklist");
         whitelistMobs = config.getStringList("generation.whitelist");
+        worldBlacklist = config.getStringList("generation.world-blacklist").stream().map(String::toLowerCase).toList();
+        dynamicDifficulty = config.getBoolean("generation.dynamic-difficulty", false);
         useWhitelist = config.getBoolean("generation.use-whitelist", false);
 
+        spawnLightning = config.getBoolean("spawn-effects.lightning", true);
+        spawnGlobalAlert = config.getBoolean("spawn-effects.global-alert", true);
+        spawnAlertRange = config.getDouble("spawn-effects.alert-range", 50);
+        starChar = config.getString("star-system.star-char", "\u2605");
+        emptyStarChar = config.getString("star-system.empty-star-char", "\u2606");
+        starArmorTiers = new java.util.HashMap<>();
         maxStarLevel = config.getInt("star-system.max-level", 5);
         starAttributeMultipliers = new HashMap<>();
         starSkillCount = new HashMap<>();
         for (int i = 1; i <= maxStarLevel; i++) {
             starAttributeMultipliers.put(i, config.getDouble("star-system.levels." + i + ".attribute-multiplier", 1.0 + (i - 1) * 0.5));
             starSkillCount.put(i, config.getInt("star-system.levels." + i + ".skill-count", i));
+            starArmorTiers.put(i, config.getString("star-system.levels." + i + ".armor-tier", "LEATHER"));
         }
         debugLog("Config loaded: " + starAttributeMultipliers.size() + " star levels, " + heightMultipliers.size() + " height conds");
     }
@@ -131,6 +149,14 @@ public class ConfigManager {
     public int getMaxStarLevel() { return maxStarLevel; }
     public double getStarAttributeMultiplier(int star) { return starAttributeMultipliers.getOrDefault(star, 1.0); }
     public int getStarSkillCount(int star) { return starSkillCount.getOrDefault(star, star); }
+    public boolean isWorldBlacklisted(String worldName) { return worldBlacklist.contains(worldName.toLowerCase()); }
+    public boolean isDynamicDifficulty() { return dynamicDifficulty; }
+    public boolean isSpawnLightning() { return spawnLightning; }
+    public boolean isSpawnGlobalAlert() { return spawnGlobalAlert; }
+    public double getSpawnAlertRange() { return spawnAlertRange; }
+    public String getStarChar() { return starChar; }
+    public String getEmptyStarChar() { return emptyStarChar; }
+    public String getStarArmorTier(int star) { return starArmorTiers.getOrDefault(star, "LEATHER"); }
     public FileConfiguration getConfig() { return config; }
 
     public void debugLog(String msg) {

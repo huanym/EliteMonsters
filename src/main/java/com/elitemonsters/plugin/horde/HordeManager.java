@@ -46,6 +46,7 @@ public class HordeManager {
         if (totalWaves == 0) return false;
         activeHorde = new HordeSession(location, totalWaves, specifiedType);
         activeHorde.start();
+        plugin.getServer().getPluginManager().callEvent(new com.elitemonsters.plugin.api.HordeStartEvent(location, totalWaves));
         Component msg = plugin.getLangManager().getComponent("horde-start", totalWaves);
         plugin.broadcastComponent(msg);
         return true;
@@ -201,7 +202,8 @@ public class HordeManager {
                 public void run() {
                     spawnedMobs.removeIf(m -> !m.isValid());
                     if (bossBar != null) {
-                        int alive = (int) spawnedMobs.stream().filter(LivingEntity::isValid).count();
+                        int alive = 0;
+                        for (LivingEntity m : spawnedMobs) { if (m.isValid()) alive++; }
                         float progress = Math.max(0.0f, Math.min(1.0f, (float) alive / mobCount));
                         bossBar.progress(progress);
                     }
@@ -251,6 +253,7 @@ public class HordeManager {
 
         private void failHorde() {
             running = false;
+            plugin.getServer().getPluginManager().callEvent(new com.elitemonsters.plugin.api.HordeFailEvent(center, currentWave, totalWaves));
             cancelTasks();
             removeBossBar();
             Component failMsg = langComponent("horde-failed");
@@ -322,6 +325,7 @@ public class HordeManager {
         }
 
         private void giveCompletionRewards() {
+            plugin.getServer().getPluginManager().callEvent(new com.elitemonsters.plugin.api.HordeCompleteEvent(center, totalWaves, participants));
             Component completeMsg = langComponent("horde-complete");
             broadcast(completeMsg);
 
@@ -331,11 +335,15 @@ public class HordeManager {
             removeBossBar();
 
             if (!plugin.getConfig().getBoolean("horde.global-rewards.enabled", true)) return;
-            String playerList = participants.stream()
-                    .map(plugin.getServer()::getPlayer)
-                    .filter(p -> p != null && p.isOnline())
-                    .map(Player::getName)
-                    .reduce((a, b) -> a + ", " + b).orElse("");
+            StringBuilder sb = new StringBuilder();
+                for (UUID pid : participants) {
+                    Player p = plugin.getServer().getPlayer(pid);
+                    if (p != null && p.isOnline()) {
+                        if (sb.length() > 0) sb.append(", ");
+                        sb.append(p.getName());
+                    }
+                }
+                String playerList = sb.toString();
             for (String cmd : plugin.getConfig().getStringList("horde.global-rewards.completion-commands"))
                 plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(),
                     cmd.replace("%waves%", String.valueOf(totalWaves)).replace("%players%", playerList));

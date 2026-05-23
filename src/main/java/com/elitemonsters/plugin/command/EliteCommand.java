@@ -37,6 +37,7 @@ public class EliteCommand implements TabExecutor {
             case "list": return handleList(sender);
             case "horde": return handleHorde(sender, args);
             case "toggle": return handleToggle(sender, args);
+            case "test": return handleTest(sender, args);
             case "clear": return handleClear(sender, args);
             default: sendHelp(sender); return true;
         }
@@ -58,7 +59,7 @@ public class EliteCommand implements TabExecutor {
         Location spawnLoc = player.getLocation();
         if (args.length >= 6) {
             try { spawnLoc = new Location(player.getWorld(), Double.parseDouble(args[args.length-3]), Double.parseDouble(args[args.length-2]), Double.parseDouble(args[args.length-1])); }
-            catch (NumberFormatException ignored) {}
+            catch (NumberFormatException e) { plugin.getErrorLogger().log("EliteCommand", "Invalid coordinate format in spawn args", e); }
         }
         Entity entity = player.getWorld().spawnEntity(spawnLoc, entityType);
         if (!(entity instanceof LivingEntity livingEntity)) { entity.remove(); sender.sendMessage(lang("mob-cannot-spawn")); return true; }
@@ -152,6 +153,128 @@ public class EliteCommand implements TabExecutor {
         return true;
     }
 
+    
+    private boolean handleTest(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("elitemonsters.command.reload")) { sender.sendMessage(lang("no-permission")); return true; }
+        if (args.length < 2) { sender.sendMessage(lang("test-usage")); return true; }
+        switch (args[1].toLowerCase()) {
+            case "info": return handleTestInfo(sender);
+            case "spawn": return handleTestSpawn(sender, args);
+            case "horde": return handleTestHorde(sender);
+            case "loot": return handleTestLoot(sender, args);
+            case "reward": return handleTestReward(sender, args);
+            case "stress": return handleTestStress(sender, args);
+            case "errors": return handleTestErrors(sender);
+                    case "cleanup": return handleTestCleanup(sender);
+            default: sender.sendMessage(lang("test-usage")); return true;
+        }
+    }
+
+    
+    private boolean handleTestInfo(CommandSender sender) {
+        int elites = plugin.getGenerationListener().getEliteMobs().size();
+        String horde = plugin.getHordeManager().isHordeActive() ? "ACTIVE wave "+plugin.getHordeManager().getActiveHorde().getCurrentWave()+"/"+plugin.getHordeManager().getActiveHorde().getTotalWaves() : "INACTIVE";
+        int affixes = plugin.getAffixManager().getAllAffixes().size();
+        int rewards = plugin.getRewardManager().getRewardIds().size();
+        sender.sendMessage(GradientUtil.parse("<g:#FF6B35:#F7C948>=== EliteMonsters Debug ===</g>"));
+        sender.sendMessage(GradientUtil.parse("&#FFAA00Elites: &#FFFFFF"+elites+"  &#FFAA00Horde: &#FFFFFF"+horde));
+        sender.sendMessage(GradientUtil.parse("&#FFAA00Affixes: &#FFFFFF"+affixes+"  &#FFAA00Rewards: &#FFFFFF"+rewards));
+        sender.sendMessage(GradientUtil.parse("&#FFAA00DynamicDiff: &#FFFFFF"+plugin.getConfigManager().isDynamicDifficulty()+"  &#FFAA00Debug: &#FFFFFF"+plugin.getConfigManager().isDebug()));
+        long mem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        sender.sendMessage(GradientUtil.parse("&#FFAA00Memory: &#FFFFFF"+(mem/1024/1024)+"MB  &#FFAA00Threads: &#FFFFFF"+Thread.activeCount()));
+        return true;
+    }
+
+    
+    private boolean handleTestSpawn(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) { sender.sendMessage(lang("player-only")); return true; }
+        String type = args.length >= 3 ? args[2] : "ZOMBIE";
+        String affixKey = args.length >= 4 ? args[3] : null;
+        int star = args.length >= 5 ? Integer.parseInt(args[4]) : 3;
+        try {
+            EntityType entityType = EntityType.valueOf(type.toUpperCase());
+            Entity e = player.getWorld().spawnEntity(player.getLocation(), entityType);
+            if (e instanceof LivingEntity le) {
+                plugin.getGenerationListener().convertToElite(le, affixKey, star);
+                sender.sendMessage(lang("mob-spawned", type+" star="+star+" affix="+(affixKey!=null?affixKey:"random")));
+            } else { e.remove(); sender.sendMessage(lang("mob-cannot-spawn")); }
+        } catch (Exception ex) { sender.sendMessage(GradientUtil.parse("&#FF5555Error: "+ex.getMessage())); }
+        return true;
+    }
+
+    private boolean handleTestHorde(CommandSender sender) {
+        if (plugin.getHordeManager().isHordeActive()) { sender.sendMessage(lang("horde-already-active")); return true; }
+        if (!(sender instanceof Player player)) { sender.sendMessage(lang("player-only")); return true; }
+        boolean ok = plugin.getHordeManager().startHorde(player.getLocation(), null);
+        sender.sendMessage(GradientUtil.parse(ok ? "&#55FF55Horde test started!" : "&#FF5555Failed to start horde"));
+        return true;
+    }
+
+    private boolean handleTestLoot(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) { sender.sendMessage(lang("player-only")); return true; }
+        String entityType = args.length >= 3 ? args[2] : "ZOMBIE";
+        String affix = args.length >= 4 ? args[3] : "FRENZY";
+        int star = args.length >= 5 ? Integer.parseInt(args[4]) : 3;
+        var dummyData = plugin.getGenerationListener().getEliteData(player);
+        if (dummyData == null) {
+            sender.sendMessage(GradientUtil.parse("&#FFAA00Spawning test mob to get EliteMobData..."));
+            try {
+                Entity e = player.getWorld().spawnEntity(player.getLocation(), EntityType.valueOf(entityType.toUpperCase()));
+                if (e instanceof LivingEntity le) plugin.getGenerationListener().convertToElite(le, affix, star);
+                sender.sendMessage(GradientUtil.parse("&#55FF55Check the spawned elite for loot!"));
+            } catch (Exception ex) { sender.sendMessage(GradientUtil.parse("&#FF5555Error: "+ex.getMessage())); }
+        }
+        return true;
+    }
+
+    private boolean handleTestReward(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) { sender.sendMessage(lang("player-only")); return true; }
+        if (args.length < 3) { sender.sendMessage(GradientUtil.parse("&#FF5555Usage: /elite test reward <rewardId>")); return true; }
+        String rewardId = args[2];
+        plugin.getRewardManager().giveReward(rewardId, player);
+        sender.sendMessage(GradientUtil.parse("&#55FF55Reward "+rewardId+" given!"));
+        return true;
+    }
+
+    private boolean handleTestStress(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) { sender.sendMessage(lang("player-only")); return true; }
+        int count = args.length >= 3 ? Integer.parseInt(args[2]) : 10;
+        if (count > 50) count = 50;
+        long start = System.currentTimeMillis();
+        int spawned = 0;
+        for (int i = 0; i < count; i++) {
+            try {
+                Entity e = player.getWorld().spawnEntity(player.getLocation(), EntityType.ZOMBIE);
+                if (e instanceof LivingEntity le) { plugin.getGenerationListener().convertToElite(le, null, 0); spawned++; }
+            } catch (Exception ignored) {}
+        }
+        long elapsed = System.currentTimeMillis() - start;
+        sender.sendMessage(GradientUtil.parse("&#55FF55Stress test: "+spawned+"/"+count+" elites in "+elapsed+"ms"));
+        return true;
+    }
+
+    
+
+    private boolean handleTestErrors(CommandSender sender) {
+        var errors = plugin.getErrorLogger().getRecentErrors();
+        int total = plugin.getErrorLogger().getTotalErrors();
+        sender.sendMessage(GradientUtil.parse("<g:#FF6B35:#F7C948>=== Error Log (total: "+total+") ===</g>"));
+        if (errors.isEmpty()) { sender.sendMessage(GradientUtil.parse("&#55FF55No errors recorded")); return true; }
+        for (var e : errors) {
+            sender.sendMessage(GradientUtil.parse("&#FFAA00["+e.time()+"] &#FF5555"+e.context()+"&#AAAAAA: "+e.message()));
+        }
+        sender.sendMessage(GradientUtil.parse("&#AAAAAAFile: plugins/EliteMonsters/errors.log"));
+        return true;
+    }
+
+    private boolean handleTestCleanup(CommandSender sender) {
+        int before = plugin.getGenerationListener().getEliteMobs().size();
+        plugin.getGenerationListener().revertAllElites();
+        int after = plugin.getGenerationListener().getEliteMobs().size();
+        sender.sendMessage(GradientUtil.parse("&#55FF55Cleanup: "+before+" -> "+after+" elites"));
+        return true;
+    }
+
     private boolean handleClear(CommandSender sender, String[] args) {
         if (!sender.hasPermission("elitemonsters.command.clear")) { sender.sendMessage(lang("no-permission")); return true; }
 
@@ -229,7 +352,7 @@ public class EliteCommand implements TabExecutor {
                 if (!(entity instanceof LivingEntity)) continue;
 
                 // Filter by type
-                if (mobType != null && entity.getType() != EntityType.valueOf(mobType)) continue;
+                if (mobType != null && entity.getType().name().equalsIgnoreCase(mobType)) continue;
 
                 // Filter by range
                 if (radius != null && center != null) {
@@ -261,12 +384,13 @@ public class EliteCommand implements TabExecutor {
         sender.sendMessage(lang("help-list"));
         sender.sendMessage(lang("help-horde"));
         sender.sendMessage(lang("help-toggle"));
+        sender.sendMessage(lang("help-test"));
         sender.sendMessage(lang("help-clear"));
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("spawn","reload","info","list","horde","toggle","clear"), args[0]);
+        if (args.length == 1) return filter(List.of("spawn","reload","info","list","horde","toggle","test","clear"), args[0]);
         if (args.length >= 2 && args[0].equalsIgnoreCase("horde")) {
             if (args.length == 2) return filter(List.of("start","stop","info"), args[1]);
             return Collections.emptyList();
@@ -279,6 +403,23 @@ public class EliteCommand implements TabExecutor {
             if (args.length == 2) return filter(Arrays.stream(EntityType.values()).map(Enum::name).collect(Collectors.toList()), args[1]);
             if (args.length == 3) return filter(plugin.getAffixManager().getAllAffixes().stream().map(AffixData::getKey).collect(Collectors.toList()), args[2]);
             if (args.length == 4) return filter(List.of("1","2","3","4","5"), args[3]);
+            return Collections.emptyList();
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("test")) {
+            if (args.length == 2) return filter(List.of("info","spawn","horde","loot","reward","stress","errors","cleanup"), args[1]);
+            if (args.length >= 3 && args[1].equalsIgnoreCase("spawn")) {
+                if (args.length == 3) return filter(Arrays.stream(EntityType.values()).map(Enum::name).collect(Collectors.toList()), args[2]);
+                if (args.length == 4) return filter(plugin.getAffixManager().getAllAffixes().stream().map(AffixData::getKey).collect(Collectors.toList()), args[3]);
+                return filter(List.of("1","2","3","4","5"), args[args.length-1]);
+            }
+            if (args.length >= 3 && args[1].equalsIgnoreCase("loot")) {
+                if (args.length == 3) return filter(Arrays.stream(EntityType.values()).map(Enum::name).collect(Collectors.toList()), args[2]);
+                if (args.length == 4) return filter(plugin.getAffixManager().getAllAffixes().stream().map(AffixData::getKey).collect(Collectors.toList()), args[3]);
+                return filter(List.of("1","2","3","4","5"), args[args.length-1]);
+            }
+            if (args.length >= 3 && args[1].equalsIgnoreCase("reward")) {
+                return filter(new ArrayList<>(plugin.getRewardManager().getRewardIds()), args[2]);
+            }
             return Collections.emptyList();
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("clear")) {

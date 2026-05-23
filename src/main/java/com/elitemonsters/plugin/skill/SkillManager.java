@@ -184,7 +184,7 @@ public class SkillManager {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 20L, 20L);
+        }.runTaskTimer(plugin, 20L + random.nextInt(20), 40L);
     }
 
     public void onEliteAttack(EliteMobData data, EntityDamageByEntityEvent event) {

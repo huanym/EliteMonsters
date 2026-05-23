@@ -60,7 +60,7 @@ public class AffixManager {
                     int count = pMap.containsKey("count") ? ((Number) pMap.get("count")).intValue() : 5;
                     double offset = pMap.containsKey("offset") ? ((Number) pMap.get("offset")).doubleValue() : 0.5;
                     particles.add(new AffixData.ParticleConfig(particle, count, offset));
-                } catch (IllegalArgumentException ignored) {}
+                } catch (IllegalArgumentException e) { plugin.getErrorLogger().log("AffixManager", "Invalid particle type: "+pMap.get("type"), e); }
             }
             data.setParticles(particles);
 

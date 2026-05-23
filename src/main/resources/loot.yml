@@ -1,0 +1,63 @@
+# config-version: 1
+# EliteMonsters Loot Table
+# 
+# loot-tables 按优先级从上到下匹配，首个匹配的表生效
+# 支持的条件: entity-types(生物类型), affixes(词缀), min-star(最低星级)
+
+config-version: 1
+
+loot-tables:
+  # 默认掉落 (最低优先级，所有精英怪都适用)
+  default:
+    enabled: true
+    drops:
+      - material: EXPERIENCE_BOTTLE
+        chance: 0.5
+        min-amount: 1
+        max-amount: 5
+      - material: EMERALD
+        chance: 0.3
+        min-amount: 1
+        max-amount: 3
+
+  # 5星精英专属掉落
+  star_5:
+    enabled: true
+    min-star: 5
+    drops:
+      - material: DIAMOND
+        chance: 0.8
+        min-amount: 1
+        max-amount: 3
+      - material: NETHERITE_SCRAP
+        chance: 0.3
+        min-amount: 1
+        max-amount: 2
+      - material: ENCHANTED_GOLDEN_APPLE
+        chance: 0.15
+        amount: 1
+
+  # 亡灵术士特殊掉落
+  summoning:
+    enabled: true
+    affixes: [SUMMONING]
+    drops:
+      - material: TOTEM_OF_UNDYING
+        chance: 0.05
+        amount: 1
+      - material: BONE
+        chance: 0.8
+        min-amount: 3
+        max-amount: 10
+
+  # Boss生物额外掉落
+  boss_mobs:
+    enabled: true
+    entity-types: [WITHER_SKELETON, WARDEN, RAVAGER, ELDER_GUARDIAN]
+    drops:
+      - material: NETHER_STAR
+        chance: 0.02
+        amount: 1
+      - material: DIAMOND_BLOCK
+        chance: 0.1
+        amount: 1

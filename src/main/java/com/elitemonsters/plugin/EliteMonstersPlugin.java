@@ -36,12 +36,15 @@ public final class EliteMonstersPlugin extends JavaPlugin {
     private EliteGenerationListener generationListener;
     private HordeManager hordeManager;
     private Economy economy;
+    private ErrorLogger errorLogger;
+    private LootManager lootManager;
     private RewardManager rewardManager;
 
     @Override
     public void onEnable() {
         instance = this;
 
+        errorLogger = new ErrorLogger(this);
         saveDefaultConfig();
         saveResource("lang.yml", false);
         saveResource("rewards.yml", false);
@@ -58,6 +61,8 @@ public final class EliteMonstersPlugin extends JavaPlugin {
         skillManager = new SkillManager(this);
         skillManager.loadSkills();
         visualManager = new VisualManager(this);
+        lootManager = new LootManager(this);
+        lootManager.load();
         rewardManager = new RewardManager(this);
         rewardManager.load();
 
@@ -69,6 +74,10 @@ public final class EliteMonstersPlugin extends JavaPlugin {
         EliteCommand eliteCommand = new EliteCommand(this);
         getCommand("elite").setExecutor(eliteCommand);
         getCommand("elite").setTabCompleter(eliteCommand);
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new ElitePlaceholders(this).register();
+            getLogger().info("PlaceholderAPI integration enabled");
+        }
         getLogger().info("EliteMonsters v" + getDescription().getVersion() + " enabled!");
     }
 
@@ -153,6 +162,9 @@ public final class EliteMonstersPlugin extends JavaPlugin {
     public EliteGenerationListener getGenerationListener() { return generationListener; }
     public HordeManager getHordeManager() { return hordeManager; }
     public Economy getEconomy() { return economy; }
+    public ErrorLogger getErrorLogger() { return errorLogger; }
+    public LootManager getLootManager() { return lootManager; }
     public RewardManager getRewardManager() { return rewardManager; }
-    public void reload() { configManager.load(); langManager.load(); affixManager.loadAffixes(); skillManager.loadSkills(); rewardManager.load(); }
+    public void reload() { configManager.load(); langManager.load(); affixManager.loadAffixes(); skillManager.loadSkills(); lootManager.load();
+        rewardManager.load(); }
 }

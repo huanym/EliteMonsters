@@ -8,21 +8,24 @@ import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 public class VisualManager {
 
     private final EliteMonstersPlugin plugin;
+    
+    private double particleDensity = 1.0;
     private boolean lightningEnabled = true;
 
-    public VisualManager(EliteMonstersPlugin plugin) { this.plugin = plugin; }
+    public VisualManager(EliteMonstersPlugin plugin) { this.plugin = plugin; this.particleDensity = plugin.getConfig().getString("visual.particle-density", "high").equalsIgnoreCase("low") ? 0.3 : plugin.getConfig().getString("visual.particle-density", "high").equalsIgnoreCase("medium") ? 0.6 : 1.0; }
 
     public void setLightningEnabled(boolean enabled) { this.lightningEnabled = enabled; }
 
-    public void playEliteSpawnEffects(LivingEntity entity, AffixData affix) {
+    public BukkitTask playEliteSpawnEffects(LivingEntity entity, AffixData affix) {
         Location loc = entity.getLocation().add(0, 1, 0);
         ParticleManager.drawHelix(loc, Particle.FLAME, 1.5, 3.0, 60, 3);
         for (AffixData.ParticleConfig pc : affix.getParticles()) {
-            entity.getWorld().spawnParticle(pc.particle(), loc, pc.count() * 20, pc.offset() * 3, 2.0, pc.offset() * 3, 0.05);
+            entity.getWorld().spawnParticle(pc.particle(), loc, (int)(pc.count() * 20 * particleDensity), pc.offset() * 3, 2.0, pc.offset() * 3, 0.05);
         }
         ParticleManager.drawBurst(loc, Particle.ENCHANT, 2.0, 32, 0.5);
         if (lightningEnabled && plugin.getConfig().getBoolean("spawn-effects.lightning", true)) {
@@ -30,7 +33,7 @@ public class VisualManager {
         }
         if (affix.getSpawnSound() != null) {
             for (Player player : entity.getWorld().getPlayers()) {
-                if (player.getLocation().distance(entity.getLocation()) <= 50)
+                if (player.getLocation().distanceSquared(entity.getLocation()) <= 2500)
                     player.playSound(player.getLocation(), affix.getSpawnSound(), 1.0f, 1.0f);
             }
         }
@@ -38,11 +41,11 @@ public class VisualManager {
             double range = plugin.getConfig().getDouble("spawn-effects.alert-range", 50);
             Component msg = plugin.getLangManager().getComponent("elite-alert");
             for (Player player : entity.getWorld().getPlayers()) {
-                if (player.getLocation().distance(entity.getLocation()) <= range)
+                if (player.getLocation().distanceSquared(entity.getLocation()) <= range * range)
                     player.sendMessage(msg);
             }
         }
-        startParticleTask(entity, affix);
+        return startParticleTask(entity, affix);
     }
 
     public void playEliteHitSound(LivingEntity entity, AffixData affix) {
@@ -55,7 +58,7 @@ public class VisualManager {
         Particle first = affix.getParticles().isEmpty() ? Particle.CLOUD : affix.getParticles().get(0).particle();
         ParticleManager.drawSphere(loc, first, 2.0, 8, 24);
         for (AffixData.ParticleConfig pc : affix.getParticles()) {
-            entity.getWorld().spawnParticle(pc.particle(), loc, pc.count() * 30, pc.offset() * 4, 2.0, pc.offset() * 4, 0.15);
+            entity.getWorld().spawnParticle(pc.particle(), loc, (int)(pc.count() * 30 * particleDensity), pc.offset() * 4, 2.0, pc.offset() * 4, 0.15);
         }
         ParticleManager.drawCircle(loc, Particle.ENCHANT, 2.5, 36, 1.0);
         if (affix.getDeathSound() != null) entity.getWorld().playSound(entity.getLocation(), affix.getDeathSound(), 1.0f, 0.5f);
@@ -72,15 +75,15 @@ public class VisualManager {
         entity.customName(nameComp.append(Component.space()).append(hbComp));
     }
 
-    private void startParticleTask(LivingEntity entity, AffixData affix) {
-        new BukkitRunnable() {
+    public BukkitTask startParticleTask(LivingEntity entity, AffixData affix) {
+        return new BukkitRunnable() {
             @Override
             public void run() {
                 if (entity.isDead() || !entity.isValid()) { cancel(); return; }
                 Location loc = entity.getLocation().add(0, 1, 0);
                 ParticleManager.drawCircle(loc, Particle.ENCHANT, 0.8, 8, 0.3);
                 for (AffixData.ParticleConfig pc : affix.getParticles()) {
-                    entity.getWorld().spawnParticle(pc.particle(), loc, pc.count(), pc.offset(), 0.3, pc.offset(), 0.01);
+                    entity.getWorld().spawnParticle(pc.particle(), loc, Math.max(1, (int)(pc.count() * particleDensity)), pc.offset(), 0.3, pc.offset(), 0.01);
                 }
             }
         }.runTaskTimer(plugin, 10L, 10L);

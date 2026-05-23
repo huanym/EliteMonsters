@@ -27,11 +27,14 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
 
 import java.util.*;
+import org.bukkit.scheduler.BukkitTask;
 
 public class EliteGenerationListener implements Listener {
 
     private final EliteMonstersPlugin plugin;
     private final Map<UUID, EliteMobData> eliteMobs = new HashMap<>();
+    private int spawnErrors = 0;
+    private final Map<UUID, BukkitTask> particleTasks = new HashMap<>();
     private final Random random = new Random();
     public static final String ELITE_META_KEY = "elitemonsters-elite";
     public static final String ELITE_UUID_KEY = "elitemonsters-uuid";
@@ -42,6 +45,23 @@ public class EliteGenerationListener implements Listener {
         this.plugin = plugin;
         this.eliteKey = new NamespacedKey(plugin, ELITE_META_KEY);
         this.eliteUuidKey = new NamespacedKey(plugin, ELITE_UUID_KEY);
+        startCleanupTask();
+    }
+    private void startCleanupTask() {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            public void run() {
+                java.util.List<java.util.UUID> toRemove = new java.util.ArrayList<>();
+                for (var entry : eliteMobs.entrySet()) {
+                    LivingEntity e = entry.getValue().getEntity();
+                    if (e == null || !e.isValid() || e.isDead()) toRemove.add(entry.getKey());
+                }
+                for (java.util.UUID id : toRemove) {
+                    BukkitTask pt = particleTasks.remove(id);
+                    if (pt != null) pt.cancel();
+                    eliteMobs.remove(id);
+                }
+            }
+        }.runTaskTimer(plugin, 200L, 200L);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -50,6 +70,7 @@ public class EliteGenerationListener implements Listener {
         if (!(entity instanceof Monster)) return;
         if (entity.getType() == EntityType.SLIME || entity.getType() == EntityType.MAGMA_CUBE) return;
         CreatureSpawnEvent.SpawnReason reason = event.getSpawnReason();
+        if (plugin.getConfigManager().isWorldBlacklisted(entity.getWorld().getName())) return;
         if (reason == CreatureSpawnEvent.SpawnReason.CUSTOM ||
             reason == CreatureSpawnEvent.SpawnReason.SPAWNER_EGG ||
             reason == CreatureSpawnEvent.SpawnReason.COMMAND) return;
@@ -75,6 +96,7 @@ public class EliteGenerationListener implements Listener {
 
     public void convertToElite(LivingEntity entity, String specifiedAffix, int specifiedLevel) {
         if (eliteMobs.containsKey(entity.getUniqueId())) return;
+        try {
         List<AffixData> affixes = new ArrayList<>(plugin.getAffixManager().getAllAffixes());
         if (affixes.isEmpty()) return;
         AffixData affix;
@@ -85,7 +107,10 @@ public class EliteGenerationListener implements Listener {
             affix = affixes.get(random.nextInt(affixes.size()));
         }
         int maxStar = plugin.getConfigManager().getMaxStarLevel();
-        int starLevel = specifiedLevel > 0 ? Math.min(specifiedLevel, maxStar) : random.nextInt(maxStar) + 1;
+        int starLevel;
+        if (specifiedLevel > 0) { starLevel = Math.min(specifiedLevel, maxStar); }
+        else if (plugin.getConfigManager().isDynamicDifficulty()) { starLevel = calculateDynamicStar(entity); }
+        else { starLevel = random.nextInt(maxStar) + 1; }
         double attrMult = plugin.getConfigManager().getStarAttributeMultiplier(starLevel);
         double healthMult = affix.getHealthMultiplier() * attrMult;
         double damageMult = affix.getDamageMultiplier() * attrMult;
@@ -137,23 +162,30 @@ public class EliteGenerationListener implements Listener {
                 plugin.getConfigManager().debugLog("Elite spawned: type=" + entity.getType() + " affix=" + affix.getKey() + " star=" + starLevel + " hp=" + String.format("%.1f", healthMult) + " dmg=" + String.format("%.1f", damageMult));
 eliteMobs.put(entity.getUniqueId(), data);
 
-        if (plugin.getConfig().getBoolean("spawn-effects.lightning", true)) {
+        if (plugin.getConfigManager().isSpawnLightning()) {
             entity.getWorld().strikeLightningEffect(entity.getLocation());
         }
-        if (plugin.getConfig().getBoolean("spawn-effects.global-alert", true)) {
-            double range = plugin.getConfig().getDouble("spawn-effects.alert-range", 50);
+        if (plugin.getConfigManager().isSpawnGlobalAlert()) {
+            double range = plugin.getConfigManager().getSpawnAlertRange();
             for (Player p : entity.getWorld().getPlayers()) {
                 if (p.getLocation().distance(entity.getLocation()) <= range) {
                     p.sendMessage(plugin.getLangManager().getComponent("elite-alert"));
                 }
             }
         }
-        plugin.getVisualManager().playEliteSpawnEffects(entity, affix);
+        BukkitTask task = plugin.getVisualManager().playEliteSpawnEffects(entity, affix);
+        if (task != null) particleTasks.put(entity.getUniqueId(), task);
+        plugin.getServer().getPluginManager().callEvent(new com.elitemonsters.plugin.api.EliteSpawnEvent(data, entity, affix, starLevel));
+        } catch (Exception ex) {
+            spawnErrors++;
+            plugin.getErrorLogger().log("convertToElite", "Failed to convert "+entity.getType().name(), ex);
+            if (eliteMobs.containsKey(entity.getUniqueId())) { BukkitTask t = particleTasks.remove(entity.getUniqueId()); if (t != null) t.cancel(); eliteMobs.remove(entity.getUniqueId()); }
+        }
     }
 
     private String getStars(int level) {
-        String full = plugin.getConfig().getString("star-system.star-char", "\u2605");
-        String empty = plugin.getConfig().getString("star-system.empty-star-char", "\u2606");
+        String full = plugin.getConfigManager().getStarChar();
+        String empty = plugin.getConfigManager().getEmptyStarChar();
         int max = plugin.getConfigManager().getMaxStarLevel();
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < max; i++) sb.append(i < level ? full : empty);
@@ -163,7 +195,7 @@ eliteMobs.put(entity.getUniqueId(), data);
     private void applyArmor(LivingEntity entity, int starLevel) {
         EntityEquipment equip = entity.getEquipment();
         if (equip == null) return;
-        String tierName = plugin.getConfig().getString("star-system.levels." + starLevel + ".armor-tier", "LEATHER");
+        String tierName = plugin.getConfigManager().getStarArmorTier(starLevel);
         Material helmet = getArmorMaterial(tierName, "HELMET");
         Material chestplate = getArmorMaterial(tierName, "CHESTPLATE");
         Material leggings = getArmorMaterial(tierName, "LEGGINGS");
@@ -222,7 +254,12 @@ eliteMobs.put(entity.getUniqueId(), data);
         EliteMobData data = eliteMobs.remove(entity.getUniqueId());
         if (data == null) return;
         data.setDead(true);
+        BukkitTask pt = particleTasks.remove(entity.getUniqueId());
+        if (pt != null) pt.cancel();
         event.getDrops().removeIf(item -> item != null && (item.getType().getKey().getKey().toUpperCase().contains("HELMET") || item.getType().getKey().getKey().toUpperCase().contains("CHESTPLATE") || item.getType().getKey().getKey().toUpperCase().contains("LEGGINGS") || item.getType().getKey().getKey().toUpperCase().contains("BOOTS")));
+        plugin.getServer().getPluginManager().callEvent(new com.elitemonsters.plugin.api.EliteDeathEvent(data, entity));
+        Player killer = entity.getKiller();
+        if (killer != null) plugin.getLootManager().rollLoot(data, entity, killer);
         plugin.getVisualManager().playEliteDeathEffects(entity, data);
         plugin.getSkillManager().onEliteDeath(data);
     }
@@ -280,6 +317,8 @@ eliteMobs.put(entity.getUniqueId(), data);
         entity.setCustomNameVisible(false);
         entity.setGlowing(false);
         entity.removeMetadata(ELITE_META_KEY, plugin);
+        BukkitTask pt2 = particleTasks.remove(data.getEntityId());
+        if (pt2 != null) pt2.cancel();
     }
 
     public void revertAllElites() {
@@ -287,12 +326,44 @@ eliteMobs.put(entity.getUniqueId(), data);
         for (EliteMobData data : snapshot) {
             try {
                 revertElite(data);
-            } catch (Exception ignored) {}
+            } catch (Exception ex) { if (plugin.getConfigManager().isDebug()) plugin.getLogger().log(java.util.logging.Level.WARNING, "Error reverting elite", ex); }
         }
         eliteMobs.clear();
+        for (BukkitTask task : particleTasks.values()) { try { task.cancel(); } catch (Exception ex) { if (plugin.getConfigManager().isDebug()) plugin.getLogger().warning("Error cancelling particle task: "+ex.getMessage()); } }
+        particleTasks.clear();
     }
 
     public EliteMobData getEliteData(LivingEntity entity) { return eliteMobs.get(entity.getUniqueId()); }
     public boolean isElite(LivingEntity entity) { return entity.hasMetadata(ELITE_META_KEY); }
+    
+    private int calculateDynamicStar(LivingEntity entity) {
+        int max = plugin.getConfigManager().getMaxStarLevel();
+        double totalScore = 0;
+        int count = 0;
+        for (org.bukkit.entity.Player p : entity.getWorld().getPlayers()) {
+            if (p.getLocation().distanceSquared(entity.getLocation()) > 2500) continue;
+            double score = 0;
+            for (org.bukkit.inventory.ItemStack item : p.getInventory().getArmorContents()) {
+                if (item == null) continue;
+                String mat = item.getType().name();
+                if (mat.contains("NETHERITE")) score += 4;
+                else if (mat.contains("DIAMOND")) score += 3;
+                else if (mat.contains("IRON")) score += 2;
+                else if (mat.contains("CHAINMAIL")) score += 1;
+                else score += 0.5;
+                score += item.getEnchantments().size() * 0.5;
+            }
+            totalScore += score;
+            count++;
+        }
+        if (count == 0) return 1;
+        double avg = totalScore / count;
+        if (avg >= 15) return max;
+        if (avg >= 10) return Math.min(max, 4);
+        if (avg >= 5) return Math.min(max, 3);
+        if (avg >= 2) return 2;
+        return 1;
+    }
+
     public Map<UUID, EliteMobData> getEliteMobs() { return eliteMobs; }
 }
