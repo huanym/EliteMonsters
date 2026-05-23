@@ -176,12 +176,17 @@ public class EliteCommand implements TabExecutor {
         String horde = plugin.getHordeManager().isHordeActive() ? "ACTIVE wave "+plugin.getHordeManager().getActiveHorde().getCurrentWave()+"/"+plugin.getHordeManager().getActiveHorde().getTotalWaves() : "INACTIVE";
         int affixes = plugin.getAffixManager().getAllAffixes().size();
         int rewards = plugin.getRewardManager().getRewardIds().size();
-        sender.sendMessage(GradientUtil.parse("<g:#FF6B35:#F7C948>=== EliteMonsters Debug ===</g>"));
-        sender.sendMessage(GradientUtil.parse("&#FFAA00Elites: &#FFFFFF"+elites+"  &#FFAA00Horde: &#FFFFFF"+horde));
-        sender.sendMessage(GradientUtil.parse("&#FFAA00Affixes: &#FFFFFF"+affixes+"  &#FFAA00Rewards: &#FFFFFF"+rewards));
-        sender.sendMessage(GradientUtil.parse("&#FFAA00DynamicDiff: &#FFFFFF"+plugin.getConfigManager().isDynamicDifficulty()+"  &#FFAA00Debug: &#FFFFFF"+plugin.getConfigManager().isDebug()));
+        
+        sender.sendMessage(lang("test-info-header"));
+        
+        sender.sendMessage(lang("test-info-elites", elites, horde));
+        
+        sender.sendMessage(lang("test-info-affixes", affixes, rewards));
+        
+        sender.sendMessage(lang("test-info-dynamic", plugin.getConfigManager().isDynamicDifficulty(), plugin.getConfigManager().isDebug()));
         long mem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-        sender.sendMessage(GradientUtil.parse("&#FFAA00Memory: &#FFFFFF"+(mem/1024/1024)+"MB  &#FFAA00Threads: &#FFFFFF"+Thread.activeCount()));
+        
+        sender.sendMessage(lang("test-info-memory", mem/1024/1024, Thread.activeCount()));
         return true;
     }
 
@@ -198,7 +203,7 @@ public class EliteCommand implements TabExecutor {
                 plugin.getGenerationListener().convertToElite(le, affixKey, star);
                 sender.sendMessage(lang("mob-spawned", type+" star="+star+" affix="+(affixKey!=null?affixKey:"random")));
             } else { e.remove(); sender.sendMessage(lang("mob-cannot-spawn")); }
-        } catch (Exception ex) { sender.sendMessage(GradientUtil.parse("&#FF5555Error: "+ex.getMessage())); }
+        } catch (Exception ex) { sender.sendMessage(lang("test-error", ex.getMessage())); }
         return true;
     }
 
@@ -206,7 +211,7 @@ public class EliteCommand implements TabExecutor {
         if (plugin.getHordeManager().isHordeActive()) { sender.sendMessage(lang("horde-already-active")); return true; }
         if (!(sender instanceof Player player)) { sender.sendMessage(lang("player-only")); return true; }
         boolean ok = plugin.getHordeManager().startHorde(player.getLocation(), null);
-        sender.sendMessage(GradientUtil.parse(ok ? "&#55FF55Horde test started!" : "&#FF5555Failed to start horde"));
+        sender.sendMessage(lang(ok ? "test-horde-started" : "test-horde-failed"));
         return true;
     }
 
@@ -217,22 +222,22 @@ public class EliteCommand implements TabExecutor {
         int star = args.length >= 5 ? Integer.parseInt(args[4]) : 3;
         var dummyData = plugin.getGenerationListener().getEliteData(player);
         if (dummyData == null) {
-            sender.sendMessage(GradientUtil.parse("&#FFAA00Spawning test mob to get EliteMobData..."));
+            sender.sendMessage(lang("test-loot-spawning"));
             try {
                 Entity e = player.getWorld().spawnEntity(player.getLocation(), EntityType.valueOf(entityType.toUpperCase()));
                 if (e instanceof LivingEntity le) plugin.getGenerationListener().convertToElite(le, affix, star);
-                sender.sendMessage(GradientUtil.parse("&#55FF55Check the spawned elite for loot!"));
-            } catch (Exception ex) { sender.sendMessage(GradientUtil.parse("&#FF5555Error: "+ex.getMessage())); }
+                sender.sendMessage(lang("test-loot-check"));
+            } catch (Exception ex) { sender.sendMessage(lang("test-error", ex.getMessage())); }
         }
         return true;
     }
 
     private boolean handleTestReward(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) { sender.sendMessage(lang("player-only")); return true; }
-        if (args.length < 3) { sender.sendMessage(GradientUtil.parse("&#FF5555Usage: /elite test reward <rewardId>")); return true; }
+        if (args.length < 3) { sender.sendMessage(lang("test-reward-usage")); return true; }
         String rewardId = args[2];
         plugin.getRewardManager().giveReward(rewardId, player);
-        sender.sendMessage(GradientUtil.parse("&#55FF55Reward "+rewardId+" given!"));
+        sender.sendMessage(lang("test-reward-given", rewardId));
         return true;
     }
 
@@ -249,7 +254,7 @@ public class EliteCommand implements TabExecutor {
             } catch (Exception ignored) {}
         }
         long elapsed = System.currentTimeMillis() - start;
-        sender.sendMessage(GradientUtil.parse("&#55FF55Stress test: "+spawned+"/"+count+" elites in "+elapsed+"ms"));
+        sender.sendMessage(lang("test-stress-result", spawned, count, elapsed));
         return true;
     }
 
@@ -258,12 +263,12 @@ public class EliteCommand implements TabExecutor {
     private boolean handleTestErrors(CommandSender sender) {
         var errors = plugin.getErrorLogger().getRecentErrors();
         int total = plugin.getErrorLogger().getTotalErrors();
-        sender.sendMessage(GradientUtil.parse("<g:#FF6B35:#F7C948>=== Error Log (total: "+total+") ===</g>"));
-        if (errors.isEmpty()) { sender.sendMessage(GradientUtil.parse("&#55FF55No errors recorded")); return true; }
+        sender.sendMessage(lang("test-errors-header", total));
+        if (errors.isEmpty()) { sender.sendMessage(lang("test-errors-empty")); return true; }
         for (var e : errors) {
-            sender.sendMessage(GradientUtil.parse("&#FFAA00["+e.time()+"] &#FF5555"+e.context()+"&#AAAAAA: "+e.message()));
+            sender.sendMessage(lang("test-errors-entry", e.time(), e.context(), e.message()));
         }
-        sender.sendMessage(GradientUtil.parse("&#AAAAAAFile: plugins/EliteMonsters/errors.log"));
+        sender.sendMessage(lang("test-errors-file"));
         return true;
     }
 
@@ -271,7 +276,7 @@ public class EliteCommand implements TabExecutor {
         int before = plugin.getGenerationListener().getEliteMobs().size();
         plugin.getGenerationListener().revertAllElites();
         int after = plugin.getGenerationListener().getEliteMobs().size();
-        sender.sendMessage(GradientUtil.parse("&#55FF55Cleanup: "+before+" -> "+after+" elites"));
+        sender.sendMessage(lang("test-cleanup-result", before, after));
         return true;
     }
 
