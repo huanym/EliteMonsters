@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.Map;
 import java.util.logging.Level;
 
 public class RewardManager {
@@ -41,8 +42,8 @@ public class RewardManager {
         int loaded = 0;
         for (String key : section.getKeys(false)) {
             try {
-                Object value = section.get(key);
-                if (value instanceof Map<?, ?> map) {
+                ConfigurationSection rewardSec = section.getConfigurationSection(key);
+                if (rewardSec != null) { Map<String, Object> map = rewardSec.getValues(false);
                                     plugin.getConfigManager().debugLog("Reward loaded: " + key);
                 rewards.put(key, RewardData.parse(map));
                     loaded++;
@@ -57,6 +58,8 @@ public class RewardManager {
     public RewardData getReward(String id) {
         return rewards.get(id);
     }
+
+    public Random getRandom() { return random; }
 
     public Set<String> getRewardIds() {
         return Collections.unmodifiableSet(rewards.keySet());

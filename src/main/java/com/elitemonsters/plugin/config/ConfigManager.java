@@ -56,7 +56,7 @@ public class ConfigManager {
             field.setAccessible(true);
             field.set(plugin, config);
         } catch (Exception e) {
-            plugin.getLogger().warning("Failed to sync plugin config: " + e.getMessage());
+            if (debug) plugin.getLogger().warning("Failed to sync plugin config: " + e.getMessage());
         }
 
         debug = config.getBoolean("debug", false);

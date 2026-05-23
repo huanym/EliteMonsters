@@ -101,6 +101,8 @@ public class HordeManager {
         private final List<LivingEntity> spawnedMobs = new ArrayList<>();
         private final Set<UUID> participants = new HashSet<>();
         private BossBar bossBar;
+        private int currentWaveMobCount = 0;
+        private int playerKilledMobs = 0;
 
         public HordeSession(Location center, int totalWaves, String specifiedType) { this.center = center; this.totalWaves = totalWaves; this.specifiedType = specifiedType; }
 
@@ -129,6 +131,8 @@ public class HordeManager {
 
             String waveKey = "horde.waves." + currentWave;
             int mobCount = plugin.getConfig().getInt(waveKey + ".mob-count", 10);
+            currentWaveMobCount = mobCount;
+            playerKilledMobs = 0;
             List<String> mobTypes = plugin.getConfig().getStringList(waveKey + ".mob-types");
             double eliteChance = plugin.getConfig().getDouble(waveKey + ".elite-chance", 0.0);
             boolean boss = plugin.getConfig().getBoolean(waveKey + ".boss", false);
@@ -202,12 +206,11 @@ public class HordeManager {
                 public void run() {
                     spawnedMobs.removeIf(m -> !m.isValid());
                     if (bossBar != null) {
-                        int alive = 0;
-                        for (LivingEntity m : spawnedMobs) { if (m.isValid()) alive++; }
-                        float progress = Math.max(0.0f, Math.min(1.0f, (float) alive / mobCount));
+                        int alive = playerKilledMobs;
+                        float progress = Math.max(0.0f, Math.min(1.0f, (float) alive / currentWaveMobCount));
                         bossBar.progress(progress);
                     }
-                    if (spawnedMobs.isEmpty()) {
+                    if (playerKilledMobs >= currentWaveMobCount) {
                         if (timeoutTask != null) { timeoutTask.cancel(); timeoutTask = null; }
                         this.cancel();
                         waveTask = null;
@@ -386,5 +389,6 @@ public class HordeManager {
         public boolean isRunning() { return running; }
         public int getCurrentWave() { return currentWave; }
         public int getTotalWaves() { return totalWaves; }
+        public void onPlayerKilledMob(LivingEntity mob) { spawnedMobs.remove(mob); playerKilledMobs++; }
     }
 }

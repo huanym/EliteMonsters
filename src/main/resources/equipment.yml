@@ -1,0 +1,236 @@
+# config-version: 1
+# ============================================================
+#   EliteMonsters - 精英怪装备掉落表
+#   Purpur/Paper 1.21.5+
+# ============================================================
+
+# 装备模板列表
+# 每个模板定义一个可掉落的装备
+# 精英怪死亡时按星级/词缀匹配, 独立概率判定
+
+equipment:
+  # === 1星通用装备 ===
+  star1_sword:
+    enabled: true
+    min-star: 1
+    max-star: 1
+    affixes: []  # 空=所有词缀通用
+    material: IRON_SWORD
+    name: "&f%affix% &7的残破之刃"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &f普通"
+    enchantments:
+      DURABILITY: 1
+    chance: 0.15
+
+  star1_helmet:
+    enabled: true
+    min-star: 1
+    max-star: 1
+    affixes: []
+    material: LEATHER_HELMET
+    name: "&f%affix% &7的皮帽"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &f普通"
+    enchantments:
+      PROTECTION: 1
+    chance: 0.12
+
+  # === 2星通用装备 ===
+  star2_sword:
+    enabled: true
+    min-star: 2
+    max-star: 2
+    affixes: []
+    material: IRON_SWORD
+    name: "&a%affix% &7的精锐之刃"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &a精良"
+    enchantments:
+      SHARPNESS: 2
+      DURABILITY: 1
+    chance: 0.15
+
+  star2_chestplate:
+    enabled: true
+    min-star: 2
+    max-star: 2
+    affixes: []
+    material: CHAINMAIL_CHESTPLATE
+    name: "&a%affix% &7的锁链甲"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &a精良"
+    enchantments:
+      PROTECTION: 2
+    chance: 0.12
+
+  # === 3~4星通用装备 ===
+  star34_sword:
+    enabled: true
+    min-star: 3
+    max-star: 4
+    affixes: []
+    material: DIAMOND_SWORD
+    name: "&9%affix% &7的史诗之刃"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &9史诗"
+    enchantments:
+      SHARPNESS: 3
+      FIRE_ASPECT: 1
+      DURABILITY: 2
+    chance: 0.12
+
+  star34_chestplate:
+    enabled: true
+    min-star: 3
+    max-star: 4
+    affixes: []
+    material: DIAMOND_CHESTPLATE
+    name: "&9%affix% &7的钻石胸甲"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &9史诗"
+    enchantments:
+      PROTECTION: 3
+      THORNS: 1
+    chance: 0.10
+
+  # === 5星通用装备 ===
+  star5_blade:
+    enabled: true
+    min-star: 5
+    max-star: 5
+    affixes: []
+    material: NETHERITE_SWORD
+    name: "&6&l%affix% &6的传说之刃"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &6&l传说"
+    enchantments:
+      SHARPNESS: 5
+      FIRE_ASPECT: 2
+      LOOTING: 3
+      DURABILITY: 3
+      SWEEPING_EDGE: 2
+    chance: 0.12
+
+  star5_chestplate:
+    enabled: true
+    min-star: 5
+    max-star: 5
+    affixes: []
+    material: NETHERITE_CHESTPLATE
+    name: "&6&l%affix% &6的传说胸甲"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &6&l传说"
+    enchantments:
+      PROTECTION: 4
+      THORNS: 2
+      DURABILITY: 3
+    chance: 0.10
+
+  star5_bow:
+    enabled: true
+    min-star: 5
+    max-star: 5
+    affixes: []
+    material: BOW
+    name: "&6&l%affix% &6的噬魂弓"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &6&l传说"
+    enchantments:
+      POWER: 5
+      PUNCH: 2
+      FLAME: 1
+      INFINITY: 1
+    chance: 0.08
+
+  # === 特定词缀专属装备 ===
+  vampire_fang:
+    enabled: true
+    min-star: 1
+    max-star: 5
+    affixes: [VAMPIRIC]
+    material: IRON_SWORD
+    name: "&c&l%affix% &c的吸血獠牙"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &c&l词缀专属"
+      - "&7被动: 命中时吸取生命"
+    enchantments:
+      SHARPNESS: 3
+      FIRE_ASPECT: 1
+    chance: 0.08
+
+  flaming_helm:
+    enabled: true
+    min-star: 1
+    max-star: 5
+    affixes: [FLAMING]
+    material: GOLDEN_HELMET
+    name: "&4&l%affix% &4的烈焰王冠"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &4&l词缀专属"
+      - "&7被动: 免疫火焰伤害"
+    enchantments:
+      PROTECTION: 3
+      FIRE_PROTECTION: 5
+      DURABILITY: 2
+    chance: 0.08
+
+  withering_blade:
+    enabled: true
+    min-star: 1
+    max-star: 5
+    affixes: [WITHERING]
+    material: STONE_SWORD
+    name: "&8&l%affix% &8的凋零之刃"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &8&l词缀专属"
+      - "&7被动: 命中施加凋零效果"
+    enchantments:
+      SHARPNESS: 3
+      DURABILITY: 2
+    chance: 0.08
+
+  shielded_shield:
+    enabled: true
+    min-star: 1
+    max-star: 5
+    affixes: [SHIELDED]
+    material: SHIELD
+    name: "&7&l%affix% &7的不灭壁垒"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &7&l词缀专属"
+      - "&7被动: 承受伤害降低"
+    enchantments:
+      DURABILITY: 3
+      MENDING: 1
+    chance: 0.08
+
+  swift_boots:
+    enabled: true
+    min-star: 1
+    max-star: 5
+    affixes: [SWIFT]
+    material: DIAMOND_BOOTS
+    name: "&b&l%affix% &b的疾风之靴"
+    lore:
+      - "&7由 &e%star%星 %affix% &7掉落"
+      - "&7品质: &b&l词缀专属"
+      - "&7被动: 移动速度提升"
+    enchantments:
+      PROTECTION: 3
+      FEATHER_FALLING: 4
+      DEPTH_STRIDER: 2
+    chance: 0.08

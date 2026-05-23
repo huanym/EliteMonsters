@@ -57,7 +57,23 @@ public class SkillManager {
             }
         });
 
-        skillExecutors.put("VAMPIRIC_LIFESTEAL", (data, entity) -> {});
+        skillExecutors.put("VAMPIRIC_LIFESTEAL", (data, entity) -> {
+            if (isOnCooldown(data, "VAMPIRIC_LIFESTEAL", 8000)) return;
+            double healed = 0;
+            for (Entity nearby : entity.getNearbyEntities(3, 2, 3)) {
+                if (nearby instanceof LivingEntity le && le instanceof Player && !le.hasMetadata("elitemonsters-elite")) {
+                    double dmg = 2.0 + random.nextDouble() * 2.0;
+                    le.damage(dmg, entity);
+                    healed += dmg * 0.5;
+                    entity.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, le.getLocation().add(0, 1.5, 0), 5, 0.2, 0.2, 0.2, 0);
+                }
+            }
+            if (healed > 0) {
+                entity.setHealth(Math.min(entity.getAttribute(Attribute.MAX_HEALTH).getValue(), entity.getHealth() + healed));
+                entity.getWorld().spawnParticle(Particle.HEART, entity.getLocation().add(0, 1.5, 0), 10, 0.5, 0.5, 0.5, 0.1);
+                entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_PLAYER_BURP, 0.8f, 0.8f);
+            }
+        });
 
         skillExecutors.put("FLAMING_AURA", (data, entity) -> {
             entity.getWorld().spawnParticle(Particle.FLAME, entity.getLocation().add(0, 1, 0), 10, 0.8, 0.8, 0.8, 0.02);

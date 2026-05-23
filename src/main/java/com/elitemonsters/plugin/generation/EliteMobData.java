@@ -48,7 +48,7 @@ public class EliteMobData {
     }
 
     public UUID getEntityId() { return entityId; }
-    public LivingEntity getEntity() { return entity; }
+    public LivingEntity getEntity() { return (entity != null && entity.isValid() && !entity.isDead()) ? entity : null; }
     public AffixData getAffix() { return affix; }
     public int getStarLevel() { return starLevel; }
     public double getHealthMultiplier() { return healthMultiplier; }

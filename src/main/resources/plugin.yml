@@ -3,7 +3,7 @@ version: "${project.version}"
 main: com.elitemonsters.plugin.EliteMonstersPlugin
 api-version: "1.21.5"
 description: Elite Monsters and Horde System
-softdepend: [Vault, LuckPerms, PlaceholderAPI]
+softdepend: [Vault, LuckPerms, PlaceholderAPI, WorldGuard]
 
 commands:
   elite:

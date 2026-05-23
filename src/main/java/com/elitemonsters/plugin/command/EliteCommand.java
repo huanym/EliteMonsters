@@ -357,7 +357,7 @@ public class EliteCommand implements TabExecutor {
                 if (!(entity instanceof LivingEntity)) continue;
 
                 // Filter by type
-                if (mobType != null && entity.getType().name().equalsIgnoreCase(mobType)) continue;
+                if (mobType != null && !entity.getType().name().equalsIgnoreCase(mobType)) continue;
 
                 // Filter by range
                 if (radius != null && center != null) {

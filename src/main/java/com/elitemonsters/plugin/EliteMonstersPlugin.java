@@ -9,6 +9,9 @@ import com.elitemonsters.plugin.horde.HordeManager;
 import com.elitemonsters.plugin.reward.RewardManager;
 import com.elitemonsters.plugin.skill.SkillManager;
 import com.elitemonsters.plugin.visual.VisualManager;
+import com.elitemonsters.plugin.integration.WorldGuardHelper;
+import com.elitemonsters.plugin.equipment.EquipmentManager;
+import com.elitemonsters.plugin.integration.MythicMobsHelper;
 import net.kyori.adventure.text.Component;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -39,6 +42,9 @@ public final class EliteMonstersPlugin extends JavaPlugin {
     private ErrorLogger errorLogger;
     private LootManager lootManager;
     private RewardManager rewardManager;
+    private WorldGuardHelper worldGuardHelper;
+    private EquipmentManager equipmentManager;
+    private MythicMobsHelper mythicMobsHelper;
 
     @Override
     public void onEnable() {
@@ -78,6 +84,12 @@ public final class EliteMonstersPlugin extends JavaPlugin {
             new ElitePlaceholders(this).register();
             getLogger().info("PlaceholderAPI integration enabled");
         }
+        worldGuardHelper = new WorldGuardHelper(this);
+        worldGuardHelper.load();
+        equipmentManager = new EquipmentManager(this);
+        equipmentManager.load();
+        mythicMobsHelper = new MythicMobsHelper(this);
+        mythicMobsHelper.load();
         getLogger().info("EliteMonsters v" + getDescription().getVersion() + " enabled!");
     }
 
@@ -165,6 +177,9 @@ public final class EliteMonstersPlugin extends JavaPlugin {
     public ErrorLogger getErrorLogger() { return errorLogger; }
     public LootManager getLootManager() { return lootManager; }
     public RewardManager getRewardManager() { return rewardManager; }
-    public void reload() { configManager.load(); langManager.load(); affixManager.loadAffixes(); skillManager.loadSkills(); lootManager.load();
-        rewardManager.load(); }
+    public WorldGuardHelper getWorldGuardHelper() { return worldGuardHelper; }
+    public EquipmentManager getEquipmentManager() { return equipmentManager; }
+    public MythicMobsHelper getMythicMobsHelper() { return mythicMobsHelper; }
+    public void reload() { configManager.load(); langManager.load(); affixManager.loadAffixes(); skillManager.loadSkills(); visualManager = new VisualManager(this); lootManager.load();
+        rewardManager.load(); if (worldGuardHelper != null) worldGuardHelper.load(); if (equipmentManager != null) equipmentManager.load(); if (mythicMobsHelper != null) mythicMobsHelper.load(); }
 }

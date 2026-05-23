@@ -17,6 +17,7 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import com.elitemonsters.plugin.horde.HordeManager;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.inventory.EntityEquipment;
@@ -74,7 +75,7 @@ public class EliteGenerationListener implements Listener {
         if (reason == CreatureSpawnEvent.SpawnReason.CUSTOM ||
             reason == CreatureSpawnEvent.SpawnReason.SPAWNER_EGG ||
             reason == CreatureSpawnEvent.SpawnReason.COMMAND) return;
-        String mobType = entity.getType().getKey().getKey().toUpperCase();
+        String mobType = entity.getType().name();
         Location loc = entity.getLocation();
         String biome = loc.getBlock().getBiome().getKey().getKey().toUpperCase();
         String time = getTimeCondition(entity.getWorld());
@@ -256,10 +257,10 @@ eliteMobs.put(entity.getUniqueId(), data);
         data.setDead(true);
         BukkitTask pt = particleTasks.remove(entity.getUniqueId());
         if (pt != null) pt.cancel();
-        event.getDrops().removeIf(item -> item != null && (item.getType().getKey().getKey().toUpperCase().contains("HELMET") || item.getType().getKey().getKey().toUpperCase().contains("CHESTPLATE") || item.getType().getKey().getKey().toUpperCase().contains("LEGGINGS") || item.getType().getKey().getKey().toUpperCase().contains("BOOTS")));
+        event.getDrops().removeIf(item -> item != null && (item.getType().name().contains("HELMET") || item.getType().name().contains("CHESTPLATE") || item.getType().name().contains("LEGGINGS") || item.getType().name().contains("BOOTS")));
         plugin.getServer().getPluginManager().callEvent(new com.elitemonsters.plugin.api.EliteDeathEvent(data, entity));
         Player killer = entity.getKiller();
-        if (killer != null) plugin.getLootManager().rollLoot(data, entity, killer);
+        if (killer != null) { plugin.getLootManager().rollLoot(data, entity, killer); plugin.getEquipmentManager().rollEquipment(data, entity, killer); }
         plugin.getVisualManager().playEliteDeathEffects(entity, data);
         plugin.getSkillManager().onEliteDeath(data);
     }
@@ -276,6 +277,16 @@ eliteMobs.put(entity.getUniqueId(), data);
     public void onEntityExplode(EntityExplodeEvent event) {
         if (event.getEntity().hasMetadata("elitemonsters-tnt")) {
             event.blockList().clear();
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onHordeMobDeath(EntityDeathEvent event) {
+        if (!plugin.getHordeManager().isHordeActive()) return;
+        var horde = plugin.getHordeManager().getActiveHorde();
+        if (horde == null) return;
+        if (event.getEntity().hasMetadata(HordeManager.HORDE_META_KEY) && event.getEntity().getKiller() instanceof Player) {
+            horde.onPlayerKilledMob(event.getEntity());
         }
     }
 

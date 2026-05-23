@@ -31,7 +31,7 @@ public class VaultRewardData extends RewardData {
         if (minAmount == maxAmount) {
             amount = minAmount;
         } else {
-            amount = minAmount + new Random().nextDouble() * (maxAmount - minAmount);
+            amount = minAmount + plugin.getRewardManager().getRandom().nextDouble() * (maxAmount - minAmount);
         }
         if (amount <= 0) return;
         plugin.getEconomy().depositPlayer(player, amount);

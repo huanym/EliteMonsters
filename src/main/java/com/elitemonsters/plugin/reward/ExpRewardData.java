@@ -32,7 +32,7 @@ public class ExpRewardData extends RewardData {
         if (minAmount == maxAmount) {
             amount = minAmount;
         } else {
-            amount = minAmount + new Random().nextInt(maxAmount - minAmount + 1);
+            amount = minAmount + plugin.getRewardManager().getRandom().nextInt(maxAmount - minAmount + 1);
         }
         if (amount <= 0) return;
 
