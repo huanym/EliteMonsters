@@ -39,6 +39,7 @@ public class EliteCommand implements TabExecutor {
             case "toggle": return handleToggle(sender, args);
             case "test": return handleTest(sender, args);
             case "clear": return handleClear(sender, args);
+            case "gui": return handleGUI(sender);
             default: sendHelp(sender); return true;
         }
     }
@@ -381,6 +382,12 @@ public class EliteCommand implements TabExecutor {
         return true;
     }
 
+    private boolean handleGUI(CommandSender sender) {
+        if (!(sender instanceof Player player)) { sender.sendMessage(lang("player-only")); return true; }
+        plugin.getEliteGUI().openMainMenu(player);
+        return true;
+    }
+
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(lang("help-header"));
         sender.sendMessage(lang("help-spawn"));
@@ -390,12 +397,12 @@ public class EliteCommand implements TabExecutor {
         sender.sendMessage(lang("help-horde"));
         sender.sendMessage(lang("help-toggle"));
         sender.sendMessage(lang("help-test"));
-        sender.sendMessage(lang("help-clear"));
+        sender.sendMessage(lang("help-clear","help-gui"));
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("spawn","reload","info","list","horde","toggle","test","clear"), args[0]);
+        if (args.length == 1) return filter(List.of("spawn","reload","info","list","horde","toggle","test","clear","gui"), args[0]);
         if (args.length >= 2 && args[0].equalsIgnoreCase("horde")) {
             if (args.length == 2) return filter(List.of("start","stop","info"), args[1]);
             return Collections.emptyList();

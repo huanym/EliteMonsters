@@ -12,6 +12,7 @@ import com.elitemonsters.plugin.visual.VisualManager;
 import com.elitemonsters.plugin.integration.WorldGuardHelper;
 import com.elitemonsters.plugin.equipment.EquipmentManager;
 import com.elitemonsters.plugin.integration.MythicMobsHelper;
+import com.elitemonsters.plugin.gui.EliteGUI;
 import net.kyori.adventure.text.Component;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -45,6 +46,7 @@ public final class EliteMonstersPlugin extends JavaPlugin {
     private WorldGuardHelper worldGuardHelper;
     private EquipmentManager equipmentManager;
     private MythicMobsHelper mythicMobsHelper;
+    private EliteGUI eliteGUI;
 
     @Override
     public void onEnable() {
@@ -90,6 +92,7 @@ public final class EliteMonstersPlugin extends JavaPlugin {
         equipmentManager.load();
         mythicMobsHelper = new MythicMobsHelper(this);
         mythicMobsHelper.load();
+        eliteGUI = new EliteGUI(this);
         getLogger().info("EliteMonsters v" + getDescription().getVersion() + " enabled!");
     }
 
@@ -180,6 +183,7 @@ public final class EliteMonstersPlugin extends JavaPlugin {
     public WorldGuardHelper getWorldGuardHelper() { return worldGuardHelper; }
     public EquipmentManager getEquipmentManager() { return equipmentManager; }
     public MythicMobsHelper getMythicMobsHelper() { return mythicMobsHelper; }
+    public EliteGUI getEliteGUI() { return eliteGUI; }
     public void reload() { configManager.load(); langManager.load(); affixManager.loadAffixes(); skillManager.loadSkills(); visualManager = new VisualManager(this); lootManager.load();
         rewardManager.load(); if (worldGuardHelper != null) worldGuardHelper.load(); if (equipmentManager != null) equipmentManager.load(); if (mythicMobsHelper != null) mythicMobsHelper.load(); }
 }
