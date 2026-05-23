@@ -7,6 +7,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -14,105 +15,100 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.*;
 
 public class EliteGUI implements Listener {
 
     private final EliteMonstersPlugin plugin;
-    private final Map<UUID, String> openMenus = new HashMap<>();
+    private final NamespacedKey guiKey;
+    private final NamespacedKey actionKey;
     private final Map<UUID, Map<String, Object>> menuData = new HashMap<>();
+    private static final Component TITLE = Component.text("EliteMonsters 管理", TextColor.color(0xFFD700));
 
     public EliteGUI(EliteMonstersPlugin plugin) {
         this.plugin = plugin;
+        this.guiKey = new NamespacedKey(plugin, "elite_gui");
+        this.actionKey = new NamespacedKey(plugin, "gui_action");
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     public void openMainMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, Component.text("EliteMonsters - 管理面板", TextColor.color(0xFFD700)));
-
-        inv.setItem(11, createItem(Material.ZOMBIE_HEAD, "生成精英怪", "点击选择生物类型"));
-        inv.setItem(12, createItem(Material.COMPASS, "附近精英怪", "查看并管理附近精英怪"));
-        inv.setItem(13, createItem(Material.SKELETON_SKULL, "尸潮控制", "启动/停止尸潮事件"));
-        inv.setItem(14, createItem(Material.COMMAND_BLOCK, "设置", "开关调试/动态难度等"));
-        inv.setItem(15, createItem(Material.CRAFTING_TABLE, "快捷操作", "生成预设精英怪"));
-        inv.setItem(26, createItem(Material.BARRIER, "关闭", ""));
-
-        openMenus.put(player.getUniqueId(), "main");
+        Inventory inv = Bukkit.createInventory(null, 27, TITLE);
+        inv.setItem(11, guiItem(Material.ZOMBIE_HEAD, "生成精英怪", "spawn_mob"));
+        inv.setItem(12, guiItem(Material.SKELETON_SKULL, "尸潮控制", "horde"));
+        inv.setItem(13, guiItem(Material.COMMAND_BLOCK, "设置", "settings"));
+        inv.setItem(14, guiItem(Material.CRAFTING_TABLE, "快捷生成", "quick"));
+        inv.setItem(15, guiItem(Material.ENCHANTED_BOOK, "精英怪列表", "list"));
+        inv.setItem(26, guiItem(Material.BARRIER, "关闭", "close"));
         player.openInventory(inv);
     }
 
     private void openSpawnMobType(Player player, int page) {
         List<EntityType> mobTypes = Arrays.stream(EntityType.values())
             .filter(t -> t.isAlive() && t.isSpawnable())
-            .filter(t -> t != EntityType.PLAYER && t != EntityType.ARMOR_STAND)
+            .filter(t -> t != EntityType.PLAYER && t != EntityType.ARMOR_STAND && t != EntityType.GIANT && t != EntityType.ILLUSIONER)
             .toList();
 
-        int perPage = 45;
+        int perPage = 36;
         int totalPages = (mobTypes.size() + perPage - 1) / perPage;
-        Inventory inv = Bukkit.createInventory(null, 54, Component.text("选择生物类型 (" + (page + 1) + "/" + totalPages + ")"));
+        Inventory inv = Bukkit.createInventory(null, 54, Component.text("生物类型 " + (page+1) + "/" + totalPages));
 
         int start = page * perPage;
         int end = Math.min(start + perPage, mobTypes.size());
         for (int i = start; i < end; i++) {
             EntityType type = mobTypes.get(i);
-            inv.addItem(createItem(Material.valueOf(getSpawnEgg(type)), type.name(), "点击选择"));
+            Material icon = safeMaterial(type.name() + "_SPAWN_EGG", Material.EGG);
+            inv.addItem(guiItem(icon, type.name(), "mob:" + type.name()));
         }
 
-        if (page > 0) inv.setItem(45, createItem(Material.ARROW, "上一页", ""));
-        if (page < totalPages - 1) inv.setItem(53, createItem(Material.ARROW, "下一页", ""));
-        inv.setItem(49, createItem(Material.BARRIER, "返回", ""));
+        if (page > 0) inv.setItem(45, guiItem(Material.ARROW, "上一页", "page_spawn:" + (page - 1)));
+        if (page < totalPages - 1) inv.setItem(53, guiItem(Material.ARROW, "下一页", "page_spawn:" + (page + 1)));
+        inv.setItem(49, guiItem(Material.BARRIER, "返回", "back"));
 
-        openMenus.put(player.getUniqueId(), "spawn_mob");
         menuData.put(player.getUniqueId(), Map.of("page", page));
         player.openInventory(inv);
     }
 
     private void openSpawnAffix(Player player, EntityType mobType) {
         List<AffixData> affixes = new ArrayList<>(plugin.getAffixManager().getAllAffixes());
-        Inventory inv = Bukkit.createInventory(null, 27, Component.text("选择词缀 - " + mobType.name()));
-
+        Inventory inv = Bukkit.createInventory(null, 27, Component.text("词缀 - " + mobType.name()));
         for (int i = 0; i < Math.min(affixes.size(), 18); i++) {
             AffixData a = affixes.get(i);
-            inv.setItem(i, createItem(Material.ENCHANTED_BOOK, a.getName(), "Key: " + a.getKey()));
+            inv.setItem(i, guiItem(Material.ENCHANTED_BOOK, a.getName(), "affix:" + a.getKey()));
         }
-        inv.setItem(22, createItem(Material.DIRT, "随机词缀", ""));
-        inv.setItem(26, createItem(Material.BARRIER, "返回", ""));
-
-        openMenus.put(player.getUniqueId(), "spawn_affix");
+        inv.setItem(22, guiItem(Material.BOOK, "随机词缀", "affix:random"));
+        inv.setItem(26, guiItem(Material.BARRIER, "返回", "back"));
         menuData.put(player.getUniqueId(), Map.of("mobType", mobType.name()));
         player.openInventory(inv);
     }
 
     private void openSpawnStar(Player player, EntityType mobType, String affixKey) {
         int maxStar = plugin.getConfigManager().getMaxStarLevel();
-        Inventory inv = Bukkit.createInventory(null, 9, Component.text("选择星级 - " + mobType.name()));
-
-        Material[] starMats = {Material.LEATHER, Material.CHAINMAIL_CHESTPLATE, Material.IRON_CHESTPLATE, Material.DIAMOND_CHESTPLATE, Material.NETHERITE_CHESTPLATE};
+        Inventory inv = Bukkit.createInventory(null, 9, Component.text("星级 - " + mobType.name()));
+        Material[] mats = {Material.LEATHER, Material.CHAINMAIL_CHESTPLATE, Material.IRON_CHESTPLATE, Material.DIAMOND_CHESTPLATE, Material.NETHERITE_CHESTPLATE};
         for (int i = 0; i < maxStar; i++) {
-            String starStr = plugin.getConfigManager().getStarChar().repeat(i + 1);
-            inv.setItem(i, createItem(starMats[i], starStr + " " + (i + 1) + "星", "点击生成"));
+            inv.setItem(i, guiItem(mats[i], (i+1) + "星", "spawn:" + mobType.name() + ":" + affixKey + ":" + (i+1)));
         }
-        inv.setItem(8, createItem(Material.BARRIER, "返回", ""));
-
-        openMenus.put(player.getUniqueId(), "spawn_star");
+        inv.setItem(8, guiItem(Material.BARRIER, "返回", "back"));
         menuData.put(player.getUniqueId(), Map.of("mobType", mobType.name(), "affixKey", affixKey));
         player.openInventory(inv);
     }
 
     private void openEliteList(Player player, int page) {
         List<EliteMobData> elites = plugin.getGenerationListener().getEliteMobs().values().stream()
-            .filter(d -> d.getEntity() != null)
-            .filter(d -> d.getEntity().getWorld().equals(player.getWorld()))
+            .filter(d -> d.getEntity() != null && d.getEntity().getWorld().equals(player.getWorld()))
             .sorted(Comparator.comparingDouble(d -> d.getEntity().getLocation().distanceSquared(player.getLocation())))
             .toList();
 
         int perPage = 45;
         int totalPages = Math.max(1, (elites.size() + perPage - 1) / perPage);
-        Inventory inv = Bukkit.createInventory(null, 54, Component.text("附近精英怪 (" + (page + 1) + "/" + totalPages + ")"));
+        Inventory inv = Bukkit.createInventory(null, 54, Component.text("精英怪 " + (page+1) + "/" + totalPages));
 
         int start = page * perPage;
         int end = Math.min(start + perPage, elites.size());
@@ -120,238 +116,167 @@ public class EliteGUI implements Listener {
             EliteMobData d = elites.get(i);
             LivingEntity e = d.getEntity();
             double dist = Math.sqrt(e.getLocation().distanceSquared(player.getLocation()));
-            String lore = String.format("距离: %.1fm | 词缀: %s | 星级: %d", dist, d.getAffix().getName(), d.getStarLevel());
-            inv.addItem(createItem(Material.SKELETON_SKULL, d.getBaseDisplayName(), lore));
+            inv.addItem(guiItem(Material.SKELETON_SKULL, d.getBaseDisplayName(),
+                "info: " + String.format("%.0fm %s %d星", dist, d.getAffix().getName(), d.getStarLevel())));
         }
 
-        if (page > 0) inv.setItem(45, createItem(Material.ARROW, "上一页", ""));
-        if (page < totalPages - 1) inv.setItem(53, createItem(Material.ARROW, "下一页", ""));
-        inv.setItem(49, createItem(Material.BARRIER, "返回", ""));
-
-        openMenus.put(player.getUniqueId(), "list");
+        if (page > 0) inv.setItem(45, guiItem(Material.ARROW, "上一页", "page_list:" + (page-1)));
+        if (page < totalPages - 1) inv.setItem(53, guiItem(Material.ARROW, "下一页", "page_list:" + (page+1)));
+        inv.setItem(49, guiItem(Material.BARRIER, "返回", "back"));
         menuData.put(player.getUniqueId(), Map.of("page", page));
         player.openInventory(inv);
     }
 
     private void openHordeControl(Player player) {
         Inventory inv = Bukkit.createInventory(null, 9, Component.text("尸潮控制"));
-
         boolean active = plugin.getHordeManager().isHordeActive();
-        inv.setItem(2, createItem(Material.GREEN_WOOL, "启动尸潮", active ? "当前尸潮进行中" : "手动启动尸潮"));
-        inv.setItem(4, createItem(Material.RED_WOOL, "停止尸潮", active ? "强制停止当前尸潮" : "当前无尸潮"));
-        inv.setItem(6, createItem(Material.CLOCK, "尸潮状态", active ? "进行中" : "未激活"));
-        inv.setItem(8, createItem(Material.BARRIER, "返回", ""));
-
-        openMenus.put(player.getUniqueId(), "horde");
+        inv.setItem(2, guiItem(Material.GREEN_WOOL, "启动尸潮", "horde:start"));
+        inv.setItem(4, guiItem(Material.RED_WOOL, "停止尸潮", "horde:stop"));
+        inv.setItem(6, guiItem(Material.CLOCK, active ? "进行中" : "未激活", "horde:status"));
+        inv.setItem(8, guiItem(Material.BARRIER, "返回", "back"));
         player.openInventory(inv);
     }
 
     private void openSettings(Player player) {
         Inventory inv = Bukkit.createInventory(null, 9, Component.text("设置"));
-
         boolean debug = plugin.getConfig().getBoolean("debug", false);
         boolean dynDiff = plugin.getConfig().getBoolean("generation.dynamic-difficulty", false);
-
-        inv.setItem(0, createItem(debug ? Material.LIME_DYE : Material.GRAY_DYE, "Debug模式", debug ? "当前: 开启" : "当前: 关闭"));
-        inv.setItem(1, createItem(dynDiff ? Material.LIME_DYE : Material.GRAY_DYE, "动态难度", dynDiff ? "当前: 开启" : "当前: 关闭"));
-        inv.setItem(8, createItem(Material.BARRIER, "返回", ""));
-
-        openMenus.put(player.getUniqueId(), "settings");
+        inv.setItem(0, guiItem(debug ? Material.LIME_DYE : Material.GRAY_DYE, "Debug: " + (debug?"开":"关"), "toggle:debug"));
+        inv.setItem(1, guiItem(dynDiff ? Material.LIME_DYE : Material.GRAY_DYE, "动态难度: " + (dynDiff?"开":"关"), "toggle:dyn"));
+        inv.setItem(8, guiItem(Material.BARRIER, "返回", "back"));
         player.openInventory(inv);
     }
 
     private void openQuickSpawn(Player player) {
         Inventory inv = Bukkit.createInventory(null, 18, Component.text("快捷生成"));
-
-        inv.setItem(0, createItem(Material.ZOMBIE_HEAD, "1星僵尸", "基础测试"));
-        inv.setItem(1, createItem(Material.SKELETON_SKULL, "3星骷髅", "中等难度"));
-        inv.setItem(2, createItem(Material.CREEPER_HEAD, "5星苦力怕", "Boss级别"));
-        inv.setItem(3, createItem(Material.WITHER_SKELETON_SKULL, "5星凋零骷髅", "顶级挑战"));
-        inv.setItem(9, createItem(Material.ZOMBIE_HEAD, "吸血伯爵", "VAMPIRIC词缀"));
-        inv.setItem(10, createItem(Material.SKELETON_SKULL, "炎魔", "FLAMING词缀"));
-        inv.setItem(11, createItem(Material.CREEPER_HEAD, "爆破鬼才", "BOMBARDING词缀"));
-        inv.setItem(17, createItem(Material.BARRIER, "返回", ""));
-
-        openMenus.put(player.getUniqueId(), "quick");
+        inv.setItem(0, guiItem(Material.ZOMBIE_HEAD, "1星僵尸", "spawn:ZOMBIE:random:1"));
+        inv.setItem(1, guiItem(Material.SKELETON_SKULL, "3星骷髅", "spawn:SKELETON:random:3"));
+        inv.setItem(2, guiItem(Material.CREEPER_HEAD, "5星苦力怕", "spawn:CREEPER:random:5"));
+        inv.setItem(3, guiItem(Material.WITHER_SKELETON_SKULL, "5星凋零骷髅", "spawn:WITHER_SKELETON:random:5"));
+        inv.setItem(9, guiItem(Material.REDSTONE, "吸血伯爵", "spawn:ZOMBIE:VAMPIRIC:3"));
+        inv.setItem(10, guiItem(Material.BLAZE_POWDER, "炎魔", "spawn:SKELETON:FLAMING:3"));
+        inv.setItem(11, guiItem(Material.TNT, "爆破鬼才", "spawn:CREEPER:BOMBARDING:3"));
+        inv.setItem(17, guiItem(Material.BARRIER, "返回", "back"));
         player.openInventory(inv);
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
-        String menu = openMenus.get(player.getUniqueId());
-        if (menu == null) return;
-        event.setCancelled(true);
-
+        if (!(event.getInventory().getHolder() == null)) return; // only our GUIs
         ItemStack item = event.getCurrentItem();
-        if (item == null || !item.hasItemMeta()) return;
-        String name = item.getItemMeta().getDisplayName();
-
-        if (name.contains("关闭") || name.contains("返回")) {
-            if (menu.equals("main")) { player.closeInventory(); return; }
-            openMainMenu(player);
+        if (item == null || item.getType() == Material.AIR) {
+            event.setCancelled(true);
             return;
         }
 
-        switch (menu) {
-            case "main" -> handleMainClick(player, name);
-            case "spawn_mob" -> handleSpawnMobClick(player, name, item);
-            case "spawn_affix" -> handleSpawnAffixClick(player, name, item);
-            case "spawn_star" -> handleSpawnStarClick(player, name, event.getSlot());
-            case "list" -> handleListClick(player, name);
-            case "horde" -> handleHordeClick(player, name);
-            case "settings" -> handleSettingsClick(player, name);
-            case "quick" -> handleQuickClick(player, name);
-        }
-    }
+        event.setCancelled(true);
+        String action = getAction(item);
+        if (action == null) return;
 
-    private void handleMainClick(Player player, String name) {
-        if (name.contains("生成精英怪")) openSpawnMobType(player, 0);
-        else if (name.contains("附近精英怪")) openEliteList(player, 0);
-        else if (name.contains("尸潮控制")) openHordeControl(player);
-        else if (name.contains("设置")) openSettings(player);
-        else if (name.contains("快捷操作")) openQuickSpawn(player);
-    }
+        if (action.equals("close")) { player.closeInventory(); return; }
+        if (action.equals("back")) { openMainMenu(player); return; }
 
-    private void handleSpawnMobClick(Player player, String name, ItemStack item) {
-        if (name.contains("上一页")) { int p = (int) menuData.get(player.getUniqueId()).get("page"); openSpawnMobType(player, p - 1); }
-        else if (name.contains("下一页")) { int p = (int) menuData.get(player.getUniqueId()).get("page"); openSpawnMobType(player, p + 1); }
-        else {
-            try { openSpawnAffix(player, EntityType.valueOf(name)); }
+        if (action.startsWith("mob:")) {
+            String typeName = action.substring(4);
+            try { openSpawnAffix(player, EntityType.valueOf(typeName)); }
             catch (IllegalArgumentException ignored) {}
-        }
-    }
-
-    private void handleSpawnAffixClick(Player player, String name, ItemStack item) {
-        Map<String, Object> data = menuData.get(player.getUniqueId());
-        EntityType mobType = EntityType.valueOf((String) data.get("mobType"));
-        String affixKey = name.contains("随机") ? null : item.getItemMeta().getLore().get(0).replace("Key: ", "");
-        openSpawnStar(player, mobType, affixKey);
-    }
-
-    private void handleSpawnStarClick(Player player, String name, int slot) {
-        if (slot >= 5) return;
-        Map<String, Object> data = menuData.get(player.getUniqueId());
-        EntityType mobType = EntityType.valueOf((String) data.get("mobType"));
-        String affixKey = (String) data.get("affixKey");
-        int star = slot + 1;
-
-        player.closeInventory();
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            org.bukkit.entity.Entity entity = player.getWorld().spawnEntity(player.getLocation(), mobType);
-            if (entity instanceof LivingEntity le) {
-                plugin.getGenerationListener().convertToElite(le, affixKey, star);
-                player.sendMessage(Component.text("已生成 " + star + "星 " + mobType.name()));
+        } else if (action.startsWith("affix:")) {
+            String affix = action.substring(6);
+            Map<String,Object> d = menuData.get(player.getUniqueId());
+            if (d != null) {
+                EntityType mt = EntityType.valueOf((String)d.get("mobType"));
+                openSpawnStar(player, mt, affix.equals("random") ? null : affix);
             }
-        });
-    }
-
-    private void handleListClick(Player player, String name) {
-        if (name.contains("上一页")) { int p = (int) menuData.get(player.getUniqueId()).get("page"); openEliteList(player, p - 1); }
-        else if (name.contains("下一页")) { int p = (int) menuData.get(player.getUniqueId()).get("page"); openEliteList(player, p + 1); }
-    }
-
-    private void handleHordeClick(Player player, String name) {
-        player.closeInventory();
-        if (name.contains("启动尸潮")) {
-            plugin.getHordeManager().startHorde(player.getLocation(), null);
-        } else if (name.contains("停止尸潮")) {
-            plugin.getHordeManager().stopHorde();
-        } else if (name.contains("尸潮状态")) {
-            boolean active = plugin.getHordeManager().isHordeActive();
-            player.sendMessage(active ? "尸潮进行中" : "当前无尸潮");
-        }
-    }
-
-    private void handleSettingsClick(Player player, String name) {
-        if (name.contains("Debug")) {
-            boolean v = !plugin.getConfig().getBoolean("debug", false);
-            plugin.getConfig().set("debug", v);
-            plugin.getConfigManager().save();
-            player.sendMessage("Debug: " + (v ? "开启" : "关闭"));
-            openSettings(player);
-        } else if (name.contains("动态难度")) {
-            boolean v = !plugin.getConfig().getBoolean("generation.dynamic-difficulty", false);
-            plugin.getConfig().set("generation.dynamic-difficulty", v);
-            plugin.getConfigManager().save();
-            player.sendMessage("动态难度: " + (v ? "开启" : "关闭"));
-            openSettings(player);
-        }
-    }
-
-    private void handleQuickClick(Player player, String name) {
-        player.closeInventory();
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            EntityType type = EntityType.ZOMBIE;
-            String affix = null;
-            int star = 1;
-            if (name.contains("僵尸")) { type = EntityType.ZOMBIE; if (name.contains("1星")) star = 1; }
-            else if (name.contains("骷髅")) { type = EntityType.SKELETON; star = name.contains("3星") ? 3 : 5; }
-            else if (name.contains("苦力怕")) { type = EntityType.CREEPER; star = 5; }
-            else if (name.contains("凋零骷髅")) { type = EntityType.WITHER_SKELETON; star = 5; }
-            else if (name.contains("吸血")) { type = EntityType.ZOMBIE; affix = "VAMPIRIC"; star = 3; }
-            else if (name.contains("炎魔")) { type = EntityType.SKELETON; affix = "FLAMING"; star = 3; }
-            else if (name.contains("爆破")) { type = EntityType.CREEPER; affix = "BOMBARDING"; star = 3; }
-            org.bukkit.entity.Entity entity = player.getWorld().spawnEntity(player.getLocation(), type);
-            if (entity instanceof LivingEntity le) {
-                plugin.getGenerationListener().convertToElite(le, affix, star);
-                player.sendMessage(Component.text("已生成"));
+        } else if (action.startsWith("spawn:")) {
+            String[] parts = action.substring(6).split(":");
+            if (parts.length >= 3) spawnElite(player, parts[0], parts[1], parts[2]);
+        } else if (action.startsWith("page_spawn:")) {
+            openSpawnMobType(player, Integer.parseInt(action.substring(11)));
+        } else if (action.startsWith("page_list:")) {
+            openEliteList(player, Integer.parseInt(action.substring(10)));
+        } else if (action.startsWith("horde:")) {
+            player.closeInventory();
+            String cmd = action.substring(6);
+            if (cmd.equals("start")) plugin.getHordeManager().startHorde(player.getLocation(), null);
+            else if (cmd.equals("stop")) plugin.getHordeManager().stopHorde();
+            else player.sendMessage(plugin.getHordeManager().isHordeActive() ? "尸潮进行中" : "无尸潮");
+        } else if (action.startsWith("toggle:")) {
+            String key = action.substring(7);
+            if (key.equals("debug")) {
+                boolean v = !plugin.getConfig().getBoolean("debug");
+                plugin.getConfig().set("debug", v);
+                plugin.getConfigManager().save();
+                player.sendMessage("Debug: " + (v ? "开" : "关"));
+                openSettings(player);
+            } else if (key.equals("dyn")) {
+                boolean v = !plugin.getConfig().getBoolean("generation.dynamic-difficulty");
+                plugin.getConfig().set("generation.dynamic-difficulty", v);
+                plugin.getConfigManager().save();
+                player.sendMessage("动态难度: " + (v ? "开" : "关"));
+                openSettings(player);
             }
-        });
+        } else if (action.equals("spawn_mob")) {
+            openSpawnMobType(player, 0);
+        } else if (action.equals("horde")) {
+            openHordeControl(player);
+        } else if (action.equals("settings")) {
+            openSettings(player);
+        } else if (action.equals("quick")) {
+            openQuickSpawn(player);
+        } else if (action.equals("list")) {
+            openEliteList(player, 0);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (event.getInventory().getHolder() == null) event.setCancelled(true);
     }
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        openMenus.remove(event.getPlayer().getUniqueId());
         menuData.remove(event.getPlayer().getUniqueId());
     }
 
-    private ItemStack createItem(Material material, String name, String lore) {
+    private void spawnElite(Player player, String typeName, String affixKey, String starStr) {
+        player.closeInventory();
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            try {
+                EntityType type = EntityType.valueOf(typeName.toUpperCase());
+                String affix = affixKey.equals("random") ? null : affixKey.toUpperCase();
+                int star = Integer.parseInt(starStr);
+                org.bukkit.entity.Entity e = player.getWorld().spawnEntity(player.getLocation(), type);
+                if (e instanceof LivingEntity le) {
+                    plugin.getGenerationListener().convertToElite(le, affix, star);
+                    player.sendMessage(Component.text("已生成 " + star + "星 " + typeName));
+                }
+            } catch (Exception ex) {
+                player.sendMessage("生成失败: " + ex.getMessage());
+            }
+        });
+    }
+
+    private ItemStack guiItem(Material material, String name, String action) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.displayName(Component.text(name, TextColor.color(0xFFD700)));
-            if (!lore.isEmpty()) meta.lore(List.of(Component.text(lore, TextColor.color(0xAAAAAA))));
+            meta.getPersistentDataContainer().set(guiKey, PersistentDataType.BOOLEAN, true);
+            meta.getPersistentDataContainer().set(actionKey, PersistentDataType.STRING, action);
             item.setItemMeta(meta);
         }
         return item;
     }
 
-    private String getSpawnEgg(EntityType type) {
-        return switch (type) {
-            case ZOMBIE -> "ZOMBIE_SPAWN_EGG";
-            case SKELETON -> "SKELETON_SPAWN_EGG";
-            case CREEPER -> "CREEPER_SPAWN_EGG";
-            case SPIDER -> "SPIDER_SPAWN_EGG";
-            case ENDERMAN -> "ENDERMAN_SPAWN_EGG";
-            case WITCH -> "WITCH_SPAWN_EGG";
-            case WITHER_SKELETON -> "WITHER_SKELETON_SPAWN_EGG";
-            case BLAZE -> "BLAZE_SPAWN_EGG";
-            case GHAST -> "GHAST_SPAWN_EGG";
-            case PIGLIN -> "PIGLIN_SPAWN_EGG";
-            case ZOMBIFIED_PIGLIN -> "ZOMBIFIED_PIGLIN_SPAWN_EGG";
-            case HOGLIN -> "HOGLIN_SPAWN_EGG";
-            case ZOGLIN -> "ZOGLIN_SPAWN_EGG";
-            case PIGLIN_BRUTE -> "PIGLIN_BRUTE_SPAWN_EGG";
-            case DROWNED -> "DROWNED_SPAWN_EGG";
-            case HUSK -> "HUSK_SPAWN_EGG";
-            case STRAY -> "STRAY_SPAWN_EGG";
-            case PHANTOM -> "PHANTOM_SPAWN_EGG";
-            case SLIME -> "SLIME_SPAWN_EGG";
-            case MAGMA_CUBE -> "MAGMA_CUBE_SPAWN_EGG";
-            case SILVERFISH -> "SILVERFISH_SPAWN_EGG";
-            case ENDERMITE -> "ENDERMITE_SPAWN_EGG";
-            case GUARDIAN -> "GUARDIAN_SPAWN_EGG";
-            case ELDER_GUARDIAN -> "ELDER_GUARDIAN_SPAWN_EGG";
-            case SHULKER -> "SHULKER_SPAWN_EGG";
-            case EVOKER -> "EVOKER_SPAWN_EGG";
-            case VINDICATOR -> "VINDICATOR_SPAWN_EGG";
-            case PILLAGER -> "PILLAGER_SPAWN_EGG";
-            case RAVAGER -> "RAVAGER_SPAWN_EGG";
-            case VEX -> "VEX_SPAWN_EGG";
-            case BREEZE -> "BREEZE_SPAWN_EGG";
-            case BOGGED -> "BOGGED_SPAWN_EGG";
-            default -> type.name() + "_SPAWN_EGG";
-        };
+    private String getAction(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return null;
+        return meta.getPersistentDataContainer().get(actionKey, PersistentDataType.STRING);
+    }
+
+    private Material safeMaterial(String name, Material fallback) {
+        try { return Material.valueOf(name.toUpperCase()); }
+        catch (IllegalArgumentException e) { return fallback; }
     }
 }
